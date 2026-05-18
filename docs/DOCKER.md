@@ -100,7 +100,7 @@ Production demo for others: **`make start`** only.
 
 | Issue | Fix |
 |-------|-----|
-| `langfuse` unhealthy | Wait 60s; check `make logs` |
+| `langfuse` unhealthy but curl `/api/public/health` OK | False alarm from old wget healthcheck — `git pull` and `docker compose up -d --force-recreate langfuse` |
 | API cannot reach postgres | `DATABASE_URL` must use host `postgres` inside Docker |
 | Chainlit cannot reach API | `API_BASE_URL=http://api:8080` in compose |
 | No traces in Langfuse | Set `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` after project setup |
