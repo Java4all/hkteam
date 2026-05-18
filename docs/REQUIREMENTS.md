@@ -12,7 +12,7 @@ This document is the **product requirements baseline**. The shipped v1.0 app map
 
 | Requirement area | v1.0 implementation |
 |------------------|----------------------|
-| Observability | **Langfuse** (self-hosted v3), not LangSmith |
+| Observability | **Langfuse v3** (compose stack) |
 | Deployment | **Docker Compose** on NVIDIA GPU instance |
 | LLM | **NVIDIA cloud** (`integrate.api.nvidia.com`), per-agent models in `configs/llm/multimodel.yaml` |
 | Specialist execution | **YAML workflow per agent** (`configs/agents/{id}.yaml`) — tools, LLM, parallel, subagent |

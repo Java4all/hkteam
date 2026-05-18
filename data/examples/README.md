@@ -1,4 +1,4 @@
-# Demo incident inputs (Chainlit UI)
+# Example incident inputs (Chainlit UI)
 
 Use these in **Chainlit** — click a **starter** button or copy from a `.txt` file.
 
@@ -30,7 +30,7 @@ Minimum 12 characters total.
 
 Structured list: `incidents.yaml` (same content; used by UI starters).
 
-## Terminal demo (no UI)
+## CLI smoke test (no UI)
 
 ```bash
 make demo

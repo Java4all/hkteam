@@ -1,30 +1,41 @@
 flowchart TB
   subgraph ui["Operator UI"]
-    CL[Chainlit]
+    CL[Chainlit :7860]
   end
 
-  subgraph api["API + LangGraph"]
-    INT[Intake]
+  subgraph api["API — incident pipeline"]
+    INT[Intake + validate]
     CLS[Classify]
-    SR[Smart Router]
-    FAN[Parallel specialists]
-    AGG[Aggregator]
-    CRT[Critic]
-    HITL[Human review]
+    SR[Smart Router<br/>max 4 specialists]
+    FAN[Fan-out parallel / sequential]
+    AGG[Aggregator<br/>llama-3.3-70b]
+    CRT[Incident critic]
+    HITL[Human review<br/>approve / reject / Submit]
     DSP[Dispatch simulation]
+  end
+
+  subgraph obs["Observability"]
+    LF[Langfuse v3]
   end
 
   CL -->|POST /incidents/stream SSE| INT
   INT --> CLS --> SR --> FAN
   FAN --> AGG --> CRT --> HITL
-  HITL -->|Submit approved| DSP
+  HITL -->|Submit approved IDs| DSP
+  api -.->|traces| LF
 
-  subgraph agents["Specialists (0–4 parallel)"]
-    A1[flood]
-    A2[utilities]
-    A3[cyber]
-    An[...]
+  subgraph specialists["Each specialist — YAML workflow"]
+    direction TB
+    SEL[select_workflow]
+    WF[run_agent_workflow]
+    SEL --> WF
+    subgraph steps["actions"]
+      T[tool / parallel]
+      L[llm]
+      SA[subagent optional]
+    end
+    WF --> steps
   end
 
-  FAN --> A1 & A2 & A3 & An
-  A1 & A2 & A3 & An --> AGG
+  FAN --> specialists
+  specialists --> AGG

@@ -68,7 +68,7 @@ def format_pipeline_progress(
     active: bool = False,
     headline: str | None = None,
 ) -> str:
-    """Rich markdown for live pipeline updates (demo / operator visibility)."""
+    """Rich markdown for live pipeline updates (operator command center)."""
     if not stages:
         spinner = SPINNER_FRAMES[frame % len(SPINNER_FRAMES)] if active else "○"
         return (

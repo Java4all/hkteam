@@ -173,7 +173,7 @@ async def start():
             "**Approve** or **Reject** on each item, then select **Submit** to finalize "
             "the incident package.\n\n"
             "Predefined scenario templates are available from the composer for "
-            "exercises and demonstration."
+            "training and operational exercises."
         )
     ).send()
 

@@ -71,7 +71,7 @@ def get_llm(agent_id: str | None = None, role: str = "agent") -> BaseChatModel:
     if not nvidia_api_key_configured():
         raise RuntimeError(
             "NVIDIA_API_KEY is missing or still a placeholder. Set nvapi-... in .env "
-            "or CRISIS_USE_MOCK_LLM=true for offline demo."
+            "or CRISIS_USE_MOCK_LLM=true for offline smoke tests."
         )
 
     profile = resolve_profile(agent_id, role)

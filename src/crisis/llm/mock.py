@@ -1,4 +1,4 @@
-"""Deterministic LLM for demo tests and offline presentations."""
+"""Deterministic LLM for automated tests and offline smoke runs."""
 
 from __future__ import annotations
 

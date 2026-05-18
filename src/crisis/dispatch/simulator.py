@@ -1,4 +1,4 @@
-"""Simulated outbound dispatch for approved recommendations (demo / SIMULATION_MODE)."""
+"""Simulated outbound dispatch for approved recommendations (SIMULATION_MODE)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Demo tests — mock LLM, no NVIDIA cloud or local NIM required."""
+"""End-to-end flow tests — mock LLM, no NVIDIA cloud or local NIM required."""
 
 import os
 

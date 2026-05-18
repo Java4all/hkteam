@@ -1,4 +1,4 @@
-# Presentation scenarios for Smart City Crisis Management v1.0
+# Evaluation scenarios for Smart City Crisis Management v1.0
 # Run: CRISIS_USE_MOCK_LLM=true python -m crisis.scripts.run_demo
 
 scenarios:

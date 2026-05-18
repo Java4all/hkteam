@@ -118,7 +118,7 @@ restart: stop start ## Restart Docker stack (stop + start)
 status: ## Docker compose ps
 	$(COMPOSE) ps
 
-demo: ## Terminal demo on host (set CRISIS_USE_MOCK_LLM=true without API key)
+demo: ## CLI smoke test on host (set CRISIS_USE_MOCK_LLM=true without API key)
 	$(PY) -m crisis.scripts.run_demo
 
 test: ## pytest on host (no Docker)

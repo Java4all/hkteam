@@ -1,0 +1,29 @@
+flowchart TB
+  subgraph L1["Level 1 — Incident orchestrator"]
+    INC[Incident]
+    SR[Smart Router]
+    INC --> SR
+    SR --> A1[flood workflow]
+    SR --> A2[utilities workflow]
+    SR --> A3[cyber workflow]
+    SR --> A4[comms / infra / ...]
+    A1 & A2 & A3 & A4 --> AGG[Aggregator]
+  end
+
+  subgraph L2["Level 2 — Inside one agent e.g. flood"]
+    WFS[workflow_selection rules]
+  end
+
+  subgraph flood_wf["flood_dam_breach"]
+    KB[playbook_rag]
+    PAR[parallel: weather + GIS]
+    LLM[draft_recommendation]
+    SUB[subagent: comms workflow]
+    KB --> PAR --> LLM --> SUB
+  end
+
+  A1 -.-> WFS
+  WFS -.-> flood_wf
+
+  AGG --> HITL[Human review]
+  HITL --> SIM[Dispatch simulation]

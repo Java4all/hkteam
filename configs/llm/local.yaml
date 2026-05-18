@@ -5,7 +5,7 @@
 #   NIM_LOCAL_BASE_URL=http://127.0.0.1:8000/v1
 #   NVIDIA_API_KEY=x
 #   LLM_PROFILE=local
-#   CRISIS_USE_MOCK_LLM=true   # optional: no NIM needed for demo tests
+#   CRISIS_USE_MOCK_LLM=true   # optional: no NIM needed for smoke tests
 
 profiles:
   local_llama_8b:

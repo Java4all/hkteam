@@ -1,4 +1,4 @@
-"""Run scripted demo scenarios (NVIDIA cloud LLM by default; mock if no API key)."""
+"""Run scripted example scenarios from the CLI (NVIDIA cloud LLM by default; mock if no API key)."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ SCENARIOS = [
 
 def main() -> int:
     mode = "mock LLM" if os.environ.get("CRISIS_USE_MOCK_LLM") == "true" else "NVIDIA cloud LLM"
-    print(f"Smart City Crisis Management — demo run ({mode})\n")
+    print(f"Smart City Crisis Management — scenario batch ({mode})\n")
     for sc in SCENARIOS:
         print("=" * 60)
         print(f"Scenario: {sc['name']}")
@@ -60,7 +60,7 @@ def main() -> int:
         print(f"  Recommendations: {len(summary.ranked_recommendations)}")
         print(f"  Trace: {' -> '.join(state.get('trace', []))}")
         print()
-    print("Demo complete. Start API: crisis-api | UI: chainlit run src/crisis/ui/chainlit_app.py")
+    print("Batch complete. Production stack: make start | UI: http://localhost:7860")
     return 0
 
 
