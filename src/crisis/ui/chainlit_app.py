@@ -170,7 +170,7 @@ async def start():
             "or operational area).\n\n"
             '<p class="crisis-welcome-section">Command review</p>\n'
             "When analysis completes, validate each recommendation with "
-            "**Approve**, **Reject**, or **Edit**, then select **Submit** to finalize "
+            "**Approve** or **Reject** on each item, then select **Submit** to finalize "
             "the incident package.\n\n"
             "Predefined scenario templates are available from the composer for "
             "exercises and demonstration."
@@ -202,6 +202,8 @@ async def on_message(message: cl.Message):
         name="Multi-agent crisis analysis",
         type="run",
         show_input=False,
+        default_open=True,
+        auto_collapse=False,
     ) as pipeline_step:
         await ui.start(
             headline="_Orchestrating classify → route → specialists → briefing…_"
@@ -287,7 +289,7 @@ async def _send_review_panel(iid: str, recs: list[dict]) -> None:
         rid = r["id"]
         card = cl.Message(
             content=format_rec_card(i, r, state),
-            actions=build_rec_card_actions(iid, rid, i, state),
+            actions=build_rec_card_actions(iid, rid, state),
             tags=["crisis-rec"],
         )
         await card.send()
@@ -314,7 +316,7 @@ async def _refresh_rec_card(iid: str, rec_id: str) -> None:
     for i, r in enumerate(state["recommendations"]):
         if r["id"] == rec_id:
             msg.content = format_rec_card(i, r, state)
-            msg.actions = build_rec_card_actions(iid, rec_id, i, state)
+            msg.actions = build_rec_card_actions(iid, rec_id, state)
             await msg.update()
             break
 
@@ -351,41 +353,6 @@ async def reject_rec(action: cl.Action):
         state["rejected"].append(rec_id)
         if rec_id in state["approved"]:
             state["approved"].remove(rec_id)
-    cl.user_session.set(review_session_key(iid), state)
-    await _refresh_rec_card(iid, rec_id)
-
-
-@cl.action_callback("edit_rec")
-async def edit_rec(action: cl.Action):
-    iid = action.payload["id"]
-    rec_id = action.payload["rec_id"]
-    idx = int(action.payload.get("idx", 0))
-    state = _get_review_state(iid)
-    if not state:
-        await cl.Message(content="Session expired — run a new incident.").send()
-        return
-    original = state["modified"].get(rec_id)
-    if not original:
-        for r in state["recommendations"]:
-            if r["id"] == rec_id:
-                original = r.get("action", "")
-                break
-    res = await cl.AskUserMessage(
-        content=(
-            f"**Edit recommendation {idx + 1}**\n\n"
-            f"Current text:\n> {original}\n\n"
-            "Enter the revised action (one or two sentences):"
-        ),
-        timeout=300,
-    ).send()
-    if not res or not res.get("output", "").strip():
-        await cl.Message(content="Edit cancelled.").send()
-        return
-    state["modified"][rec_id] = res["output"].strip()
-    if rec_id not in state["approved"]:
-        state["approved"].append(rec_id)
-    if rec_id in state["rejected"]:
-        state["rejected"].remove(rec_id)
     cl.user_session.set(review_session_key(iid), state)
     await _refresh_rec_card(iid, rec_id)
 

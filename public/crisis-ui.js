@@ -17,7 +17,6 @@
     "Undo Approve": "#16a34a",
     Reject: "#dc2626",
     "Undo Reject": "#dc2626",
-    Edit: "#2563eb",
   };
 
   function styleRecCards() {
@@ -48,6 +47,8 @@
         btn.style.boxShadow = "none";
         btn.style.paddingLeft = "0";
         btn.style.paddingRight = "0.75rem";
+        btn.style.pointerEvents = "auto";
+        btn.style.cursor = "pointer";
       }
     });
   }

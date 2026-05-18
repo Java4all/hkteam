@@ -63,25 +63,20 @@ def format_rec_card(index: int, rec: dict, state: dict[str, Any]) -> str:
 
 
 def build_rec_card_actions(
-    incident_id: str, rec_id: str, index: int, state: dict[str, Any]
+    incident_id: str, rec_id: str, state: dict[str, Any]
 ) -> list[cl.Action]:
     is_approved = rec_id in state["approved"]
     is_rejected = rec_id in state["rejected"]
     return [
         cl.Action(
             name="approve_rec",
-            payload={"id": incident_id, "rec_id": rec_id, "idx": index},
+            payload={"id": incident_id, "rec_id": rec_id},
             label="Undo Approve" if is_approved else "Approve",
         ),
         cl.Action(
             name="reject_rec",
-            payload={"id": incident_id, "rec_id": rec_id, "idx": index},
+            payload={"id": incident_id, "rec_id": rec_id},
             label="Undo Reject" if is_rejected else "Reject",
-        ),
-        cl.Action(
-            name="edit_rec",
-            payload={"id": incident_id, "rec_id": rec_id, "idx": index},
-            label="Edit",
         ),
     ]
 
