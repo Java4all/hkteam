@@ -13,7 +13,7 @@
 | **Agent workflows & orchestration** | [AGENTS.md](AGENTS.md) |
 | Diagrams (Mermaid) | [diagrams/README.md](diagrams/README.md) |
 | Demo incidents | [../data/examples/README.md](../data/examples/README.md) |
-| Product requirements | [../.kiro/specs/smart-city-crisis-management/requirements.md](../.kiro/specs/smart-city-crisis-management/requirements.md) |
+| Product requirements | [REQUIREMENTS.md](REQUIREMENTS.md) |
 
 ## v1.0 architecture (current)
 

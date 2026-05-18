@@ -8,7 +8,7 @@
 | **Primary OS** | Ubuntu 22.04+ on **NVIDIA GPU instance** (see `docs/UBUNTU.md`) |
 | **Deployment** | **Docker Compose only** for production/demo (`make start`) |
 | **Product** | Smart City Crisis Management System |
-| **Requirements** | `.kiro/specs/smart-city-crisis-management/requirements.md` |
+| **Requirements** | `docs/REQUIREMENTS.md` |
 | **Stack** | LangGraph · NVIDIA cloud LLM · Langfuse v3 · Chainlit · Postgres |
 | **Inference** | Per-agent models on NVIDIA cloud (`LLM_PROFILE=multimodel`); optional local NIM on same host |
 | **Agents guide** | `docs/AGENTS.md` · diagrams: `docs/diagrams/` |
@@ -993,7 +993,7 @@ hkteam/
 
 ## 18. References
 
-- Product requirements: `.kiro/specs/smart-city-crisis-management/requirements.md`
+- Product requirements: `docs/REQUIREMENTS.md`
 - Specialist agents: `docs/AGENTS.md`
 - Diagrams: `docs/diagrams/`
 - Example configs: `configs/` in this repository

@@ -10,7 +10,8 @@
 |----------|-------------|
 | [**Documentation index**](docs/README.md) | Full doc map (reviewed for workflow-only orchestration) |
 | [**Docker deployment**](docs/DOCKER.md) | **Start here** — compose stack, Langfuse keys, troubleshooting |
-| [Technical design v1.0](docs/TECHNICAL_DESIGN.md) | Architecture, models, security, requirements traceability |
+| [Technical design v1.0](docs/TECHNICAL_DESIGN.md) | Architecture, models, security |
+| [Product requirements](docs/REQUIREMENTS.md) | Acceptance criteria (Req 1–15) |
 | [Specialist agents](docs/AGENTS.md) | Roles, YAML workflows, routing, code map |
 | [Architecture diagrams](docs/diagrams/README.md) | Mermaid: deployment, pipeline, agent workflow |
 | [Runbook v1.0](docs/RUNBOOK_v1.md) | Day-2 operations |
@@ -128,4 +129,4 @@ Production demos use **`make start` on the GPU instance** only.
 
 ## Requirements
 
-Product requirements: `.kiro/specs/smart-city-crisis-management/requirements.md`
+Product requirements: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)
