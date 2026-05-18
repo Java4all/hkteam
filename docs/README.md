@@ -21,3 +21,5 @@ Diagram: [diagrams/deployment.mmd](diagrams/deployment.mmd)
 ## Observability
 
 **Langfuse v3** only — images `langfuse/langfuse:3` and `langfuse/langfuse-worker:3` in `docker-compose.yml`. Setup: [DOCKER.md § Langfuse](DOCKER.md#langfuse-api-keys-one-time).
+
+Traces are emitted on each **LLM invoke** during an incident (`langfuse_incident_session` + `invoke_chat`). Group by session id = incident id (`INC-…`). Verify: `make test-langfuse` then run any example in Chainlit.

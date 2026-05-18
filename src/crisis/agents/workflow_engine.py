@@ -71,7 +71,7 @@ def _run_single_action(
 
 
 def _format_subagent_output(child_id: str, out: SpecialistOutput) -> str:
-    rec_lines = [f"- {r.text}" for r in out.recommendations[:5]]
+    rec_lines = [f"- {r.action}" for r in out.recommendations[:5]]
     rec_block = "\n".join(rec_lines) if rec_lines else "(no recommendations)"
     return (
         f"## subagent:{child_id} (workflow={out.workflow_id})\n"

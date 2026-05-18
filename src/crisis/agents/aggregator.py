@@ -5,6 +5,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 import re
 
 from crisis.agents.display import format_agent_list
+from crisis.agents.recommendations import parse_recommendation_bullets
+from crisis.llm.invoke import invoke_chat
 from crisis.llm.registry import get_llm, resolve_profile
 from crisis.models.schemas import Incident, IncidentSummary, Recommendation, SpecialistOutput
 
@@ -46,7 +48,8 @@ def aggregate_outputs(incident: Incident, outputs: dict[str, SpecialistOutput]) 
     summary_text = ""
     try:
         agent_names = format_agent_list(outputs)
-        resp = llm.invoke(
+        resp = invoke_chat(
+            llm,
             [
                 SystemMessage(
                     content=(
@@ -69,6 +72,19 @@ def aggregate_outputs(incident: Incident, outputs: dict[str, SpecialistOutput]) 
         summary_text = getattr(resp, "content", str(resp))
     except Exception as exc:
         summary_text = f"Aggregator LLM unavailable: {exc}\n\n" + bullets if bullets else ""
+
+    if not ranked and summary_text:
+        fallback_agent = next(iter(outputs), "eoc")
+        for i, action in enumerate(parse_recommendation_bullets(summary_text, max_items=12)):
+            ranked.append(
+                Recommendation(
+                    id=f"rec-{fallback_agent}-{i + 1}",
+                    priority=min(5, i + 1),
+                    action=action,
+                    rationale="Parsed from EOC briefing",
+                    evidence_ids=[],
+                )
+            )
 
     return IncidentSummary(
         incident_id=incident.incident_id,

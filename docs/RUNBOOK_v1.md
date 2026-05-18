@@ -17,8 +17,11 @@ make restart        # after .env or configs/agents/*.yaml changes
 Stack uses `langfuse/langfuse:3` + worker + ClickHouse + Redis + MinIO (see [DOCKER.md](DOCKER.md)).
 
 ```bash
-make test-langfuse
-curl -s http://127.0.0.1:8080/health | python3 -m json.tool   # langfuse.auth_ok
+make test-langfuse          # smoke trace (should appear in UI within ~30s)
+curl -s http://127.0.0.1:8080/health | python3 -m json.tool   # langfuse.auth_ok must be true
+
+After each incident in Chainlit, open Langfuse → **Traces** → filter by session id matching `INC-…`.
+If `auth_ok` is false, regenerate API keys in the Langfuse project (keys are invalid after DB reset).
 ```
 
 Keys: project Settings → API Keys → `.env` → `make restart`.

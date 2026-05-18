@@ -72,9 +72,9 @@ docker compose --env-file .env up -d --force-recreate api chainlit
 
 | Issue | Fix |
 |-------|-----|
-| No traces | Langfuse v3 stack running; project keys in `.env`; `make test-langfuse` |
+| No traces after incidents | Keys in `.env` (`pk-lf-` / `sk-lf-`); `curl http://127.0.0.1:8080/health` → `langfuse.auth_ok: true`; `make test-langfuse` (smoke trace); rebuild **api** after code changes. Traces are created per **LLM call** during an incident (`invoke_chat` + `langfuse_incident_session`). Filter UI by session = `INC-…` incident id. |
 | Langfuse S3 / Region error | `LANGFUSE_S3_*_REGION=auto`; recreate minio + langfuse |
-| NVIDIA 404 | Valid key; enable models on build.nvidia.com; `make verify-nvidia-api` |
+| NVIDIA 404 / `Function id … version null` | Enable each model on [build.nvidia.com](https://build.nvidia.com/) for your key; `make verify-nvidia-api` lists per-agent probes. Cyber defaults to nemotron-nano (not mistral) in `multimodel.yaml`. |
 | Chainlit blank | `CHAINLIT_URL` matches browser; `make diagnose-chainlit`; rebuild chainlit |
 | API → DB errors | `DATABASE_URL` host = `postgres` |
 

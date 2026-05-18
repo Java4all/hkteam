@@ -5,7 +5,10 @@ from typing import Any
 import chainlit as cl
 
 from crisis.agents.display import agent_display_name
-from crisis.agents.recommendations import agent_id_from_recommendation_id
+from crisis.agents.recommendations import (
+    agent_id_from_recommendation_id,
+    recommendations_from_narrative,
+)
 
 def review_session_key(incident_id: str) -> str:
     return f"review_{incident_id}"
@@ -13,6 +16,39 @@ def review_session_key(incident_id: str) -> str:
 
 def review_cards_key(incident_id: str) -> str:
     return f"review_cards_{incident_id}"
+
+
+def _normalize_rec_dict(rec: dict) -> dict | None:
+    action = (rec.get("action") or "").strip()
+    if not action:
+        return None
+    rid = rec.get("id") or f"rec-unknown-{hash(action) % 100000}"
+    return {
+        "id": rid,
+        "priority": rec.get("priority", 1),
+        "action": action,
+        "rationale": rec.get("rationale", ""),
+        "evidence_ids": list(rec.get("evidence_ids") or []),
+    }
+
+
+def recommendations_for_review(
+    summary: dict,
+    *,
+    fallback_agent: str | None = None,
+    max_items: int = 12,
+) -> list[dict]:
+    """Ranked recommendations for the operator review panel, with narrative fallback."""
+    raw = summary.get("ranked_recommendations") or []
+    normalized = [n for r in raw if (n := _normalize_rec_dict(r))]
+    unique = unique_recommendations_for_review(normalized, max_items=max_items)
+    if unique:
+        return unique
+    narrative = summary.get("narrative") or ""
+    agent = fallback_agent or "eoc"
+    return recommendations_from_narrative(
+        narrative, agent_id=agent, max_items=max_items
+    )
 
 
 def unique_recommendations_for_review(recs: list[dict], *, max_items: int = 12) -> list[dict]:

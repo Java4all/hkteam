@@ -10,7 +10,6 @@ from crisis.graph.state import IncidentState
 from crisis.models.enums import IncidentStatus
 from crisis.models.schemas import IncidentReport, RouterHandoff
 from crisis.models.schemas import SpecialistOutput
-from crisis.observability.langfuse import flush_langfuse_traces, get_langfuse_config
 from crisis.routing.classifier import classify_incident
 from crisis.routing.smart_router import route_incident
 

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
-from typing import Any
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 from crisis.settings import settings
 
 logger = logging.getLogger(__name__)
 
 _client_ready = False
+_active_invoke_config: contextvars.ContextVar[dict[str, Any] | None] = contextvars.ContextVar(
+    "langfuse_active_invoke_config", default=None
+)
 
 
 def _langfuse_base_url() -> str:
@@ -84,6 +89,31 @@ def flush_langfuse_traces() -> None:
         logger.warning("langfuse flush failed: %s", exc)
 
 
+def get_active_invoke_config() -> dict[str, Any] | None:
+    """RunnableConfig fragment for llm.invoke when inside langfuse_incident_session."""
+    return _active_invoke_config.get()
+
+
+@contextmanager
+def langfuse_incident_session(
+    incident_id: str,
+    *,
+    tags: list[str] | None = None,
+) -> Iterator[dict[str, Any]]:
+    """
+    Activate Langfuse LangChain callbacks for all invoke_chat() calls in this incident.
+
+    Use session_id = incident_id so traces group under one operator run in the UI.
+    """
+    cfg = get_langfuse_config(session_id=incident_id, tags=tags or ["incident-pipeline"])
+    token = _active_invoke_config.set(cfg if cfg else None)
+    try:
+        yield cfg
+    finally:
+        _active_invoke_config.reset(token)
+        flush_langfuse_traces()
+
+
 def get_langfuse_config(*, session_id: str | None = None, tags: list[str] | None = None) -> dict[str, Any]:
     """LangGraph invoke config with Langfuse callback when enabled."""
     if not settings.langfuse_enabled:
@@ -146,5 +176,15 @@ def langfuse_health() -> dict[str, Any]:
     else:
         out["auth_ok"] = False
         out["auth_note"] = "Set LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY in .env"
+
+    try:
+        from langfuse.langchain import CallbackHandler  # noqa: F401
+
+        out["callback_handler"] = "available"
+    except ImportError:
+        out["callback_handler"] = "missing"
+    out["tracing_note"] = (
+        "LLM traces require LANGFUSE_* keys and rebuild api after invoke_chat wiring"
+    )
 
     return out

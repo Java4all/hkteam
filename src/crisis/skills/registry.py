@@ -6,6 +6,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from crisis.llm.invoke import invoke_chat
 from crisis.llm.registry import get_llm
 from crisis.skills.knowledge import enrich_agent_context
 
@@ -99,7 +100,7 @@ def _draft_recommendation(
             f"Context:\n{context}"
         )
     )
-    resp = llm.invoke([sys, human])
+    resp = invoke_chat(llm, [sys, human])
     return getattr(resp, "content", str(resp))
 
 

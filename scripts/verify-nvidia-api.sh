@@ -38,5 +38,8 @@ from crisis.llm.nvidia_health import nvidia_health
 import json
 h = nvidia_health()
 print(json.dumps(h, indent=2))
-raise SystemExit(0 if h.get('ok') else 1)
+ok = h.get('ok') and h.get('models_ok', True)
+if not ok and h.get('models_failed'):
+    print('\\nFAILED MODELS — enable on https://build.nvidia.com/ or change configs/llm/multimodel.yaml')
+raise SystemExit(0 if ok else 1)
 "

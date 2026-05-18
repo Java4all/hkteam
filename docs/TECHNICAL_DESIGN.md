@@ -553,7 +553,7 @@ Profiles are reusable client settings (`base_url`, `model`, temperature, `max_to
 | `cloud_nemotron_mini` | `nvidia/nemotron-mini-4b-instruct` | Fast routing / classification |
 | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Specialist agents (flood, utilities, …) |
 | `cloud_llama_70b` | `meta/llama-3.3-70b-instruct` | Aggregator (merge specialist outputs) |
-| `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | Cyber specialist |
+| `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | Optional — not assigned in v1.0 (enable on build.nvidia.com first) |
 | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | public_services (Phi-3 not on current catalog) |
 | `cloud_nemotron_super` | `nvidia/llama-3.3-nemotron-super-49b-v1.5` | Defined, not assigned in v1.0 (optional upgrade) |
 | `local_llama_8b` | `meta/llama-3.1-8b-instruct` | Optional local NIM (`NIM_LOCAL_BASE_URL`) |
@@ -574,7 +574,7 @@ Profiles are reusable client settings (`base_url`, `model`, temperature, `max_to
 | Specialist **infrastructure** | `cloud_nemotron_nano_8b` | same | `configs/agents/infrastructure.yaml` |
 | Specialist **public_safety** | `cloud_nemotron_nano_8b` | same | `configs/agents/public_safety.yaml` |
 | Specialist **general** | `cloud_nemotron_nano_8b` | same | `configs/agents/general.yaml` |
-| Specialist **cyber** | `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | `configs/agents/cyber.yaml` |
+| Specialist **cyber** | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | `configs/agents/cyber.yaml` |
 | Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | `configs/agents/public_services.yaml` |
 | Specialist **comms** | `cloud_nemotron_nano_8b` | same | Router adds for HIGH/CRITICAL; subagent from flood |
 
@@ -622,8 +622,7 @@ flowchart LR
   CLOUD --> M1[nemotron-mini classify route]
   CLOUD --> M2[nemotron-nano-8b specialists]
   CLOUD --> M3[llama-3.3-70b aggregate]
-  CLOUD --> M4[mistral-7b cyber]
-  CLOUD --> M5[phi-4-mini public_services]
+  CLOUD --> M4[phi-4-mini public_services]
   CLOUD --> M7[nemotron-nano comms]
   LOCAL --> M6[llama-8b local profile]
 ```
@@ -657,7 +656,7 @@ Invoke from the `nat_workflow` action via in-process runner (planned future rele
 
 ### 9.1 Observability — Langfuse v3
 
-Self-hosted **Langfuse v3** (`langfuse/langfuse:3`, worker, ClickHouse, Redis, MinIO). LangChain callback on pipeline invoke; flush per incident. Setup: [DOCKER.md](DOCKER.md). Disable in tests: `LANGFUSE_ENABLED=false`.
+Self-hosted **Langfuse v3** (`langfuse/langfuse:3`, worker, ClickHouse, Redis, MinIO). Each incident run opens `langfuse_incident_session(incident_id)`; all `invoke_chat()` calls attach the Langfuse `CallbackHandler`; `flush()` runs at end of session. Setup: [DOCKER.md](DOCKER.md). Disable in tests: `LANGFUSE_ENABLED=false`.
 
 | Signal | Tags |
 |--------|------|

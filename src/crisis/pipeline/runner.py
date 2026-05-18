@@ -14,7 +14,7 @@ from crisis.graph.incident_graph import (
 from crisis.graph.state import IncidentState
 from crisis.models.enums import SpecialistStatus
 from crisis.models.schemas import IncidentReport, RouterHandoff, SpecialistOutput
-from crisis.observability.langfuse import flush_langfuse_traces, get_langfuse_config
+from crisis.observability.langfuse import langfuse_incident_session
 from crisis.pipeline.events import (
     PipelineStage,
     apply_stage,
@@ -23,6 +23,7 @@ from crisis.pipeline.events import (
     stages_to_trace,
 )
 from crisis.agents.specialist import run_specialist
+from crisis.llm.nvidia_health import nvidia_model_enablement_hint
 from crisis.agents.workflow_overrides import apply_workflow_override
 from crisis.llm.registry import resolve_profile
 
@@ -88,16 +89,25 @@ def _run_specialists_with_progress(
     def _record_result(aid: str, out: SpecialistOutput, err: str | None) -> None:
         nonlocal stages
         outputs[aid] = out
+        stage_error = err or (
+            None
+            if out.status == SpecialistStatus.COMPLETE
+            else "; ".join(out.check_notes) or None
+        )
+        if stage_error and out.status != SpecialistStatus.COMPLETE:
+            try:
+                model = resolve_profile(aid, "agent").model
+            except Exception:
+                model = None
+            hint = nvidia_model_enablement_hint(stage_error, model=model)
+            if hint:
+                stage_error = f"{stage_error[:400]}\n\n→ {hint}"
         stages = apply_stage(
             stages,
             f"specialist:{aid}",
             "complete" if out.status == SpecialistStatus.COMPLETE else "error",
             detail=f"{out.duration_ms}ms" if not err else "failed",
-            error=err or (
-                None
-                if out.status == SpecialistStatus.COMPLETE
-                else "; ".join(out.check_notes) or None
-            ),
+            error=stage_error,
         )
         _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
 
@@ -149,7 +159,6 @@ def run_incident_pipeline(
     on_progress: ProgressCallback | None = None,
 ) -> IncidentState:
     """Run the incident pipeline with optional progress callbacks."""
-    get_langfuse_config(tags=["incident-pipeline"])
     init: IncidentState = {"report": report, "trace": ["start"]}
     stages = initial_stages()
     state = init
@@ -167,6 +176,18 @@ def run_incident_pipeline(
         )
         _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
 
+        with langfuse_incident_session(inc.incident_id, tags=["incident-pipeline"]):
+            return _run_pipeline_after_intake(state, stages, on_progress)
+    except Exception:
+        raise
+
+
+def _run_pipeline_after_intake(
+    state: IncidentState,
+    stages: list[PipelineStage],
+    on_progress: ProgressCallback | None,
+) -> IncidentState:
+    try:
         stages = apply_stage(stages, "smart_route", "running")
         _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
         state = {**state, **node_smart_route(state)}
@@ -212,8 +233,6 @@ def run_incident_pipeline(
             },
         )
         raise
-    finally:
-        flush_langfuse_traces()
 
 
 def stream_incident_pipeline(report: IncidentReport) -> Iterator[str]:

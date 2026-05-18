@@ -18,6 +18,7 @@ from crisis.agents.display import agent_display_name, format_agent_list
 from crisis.ui.pipeline_animator import PipelineProgressUI
 from crisis.ui.pipeline_display import format_pipeline_stages
 from crisis.ui.dispatch_display import format_dispatch_simulation
+from crisis.agents.recommendations import strip_recommendations_from_narrative
 from crisis.ui.review_panel import (
     build_footer_actions,
     build_rec_card_actions,
@@ -26,7 +27,7 @@ from crisis.ui.review_panel import (
     format_recommendations_header,
     review_cards_key,
     review_session_key,
-    unique_recommendations_for_review,
+    recommendations_for_review,
 )
 
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
@@ -270,7 +271,9 @@ async def on_message(message: cl.Message):
         ),
     ).send()
 
-    review_recs = unique_recommendations_for_review(recs)
+    review_recs = recommendations_for_review(
+        summary, fallback_agent=fallback_agent
+    )
     await _send_review_panel(iid, review_recs)
 
 

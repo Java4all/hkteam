@@ -12,7 +12,7 @@
 #   nvidia/nemotron-mini-4b-instruct
 #   nvidia/llama-3.1-nemotron-nano-8b-v1
 #   meta/llama-3.3-70b-instruct
-#   mistralai/mistral-7b-instruct-v0.3
+#   mistralai/mistral-7b-instruct-v0.3  (optional profile only — cyber uses nemotron-nano)
 #   microsoft/phi-4-mini-instruct
 # Embeddings: disabled (provider: none) until RAG is implemented.
 # Smoke test: make verify-nvidia-api
@@ -86,7 +86,9 @@ assignments:
 
   agents:
     flood: cloud_nemotron_nano_8b
-    cyber: cloud_mistral_7b
+    # Use nemotron-nano (same as other specialists). mistral-7b often 404s until enabled
+    # on build.nvidia.com for your account ("Function id … version null").
+    cyber: cloud_nemotron_nano_8b
     infrastructure: cloud_nemotron_nano_8b
     public_services: cloud_phi_mini
     public_safety: cloud_nemotron_nano_8b
