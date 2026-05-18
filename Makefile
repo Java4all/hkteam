@@ -74,6 +74,10 @@ diagnose-chainlit: ## Debug Chainlit blank UI / project/settings 500
 	chmod +x scripts/diagnose-chainlit.sh
 	bash scripts/diagnose-chainlit.sh
 
+verify-langfuse-keys: ## HTTP check that .env pk/sk match running Langfuse
+	chmod +x scripts/verify-langfuse-keys.sh
+	bash scripts/verify-langfuse-keys.sh
+
 test-langfuse: ## Send smoke trace to Langfuse (verify keys + SDK)
 	chmod +x scripts/test-langfuse-trace.sh
 	bash scripts/test-langfuse-trace.sh

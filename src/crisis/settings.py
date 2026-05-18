@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -30,6 +31,13 @@ class Settings(BaseSettings):
     langfuse_secret_key: str = ""
     langfuse_host: str = "http://localhost:3000"
     langfuse_base_url: str = ""
+
+    @field_validator("langfuse_public_key", "langfuse_secret_key", mode="before")
+    @classmethod
+    def _strip_langfuse_keys(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.strip()
+        return value
 
     configs_dir: Path = ROOT / "configs"
     data_dir: Path = ROOT / "data"

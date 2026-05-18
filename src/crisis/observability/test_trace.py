@@ -6,7 +6,7 @@ import socket
 import sys
 from urllib.parse import urlparse
 
-from crisis.observability.langfuse import _apply_langfuse_env, flush_langfuse_traces, langfuse_health
+from crisis.observability.langfuse import flush_langfuse_traces, get_langfuse_client, langfuse_health
 from crisis.settings import settings
 
 
@@ -50,13 +50,18 @@ def main() -> int:
         print("ERROR: Langfuse /api/public/health not reachable from api container")
         return 1
     if not health.get("auth_ok"):
-        print("ERROR: Langfuse auth_check failed — wrong API keys or project")
+        pk = settings.langfuse_public_key
+        print("ERROR: Langfuse auth_check failed (401) — keys in .env do not match this Langfuse instance.")
+        print(f"       Public key in use: {pk[:16]}...")
+        print("       Fix:")
+        print("         1. Open Langfuse UI (http://localhost:3000) → your project → Settings → API Keys")
+        print("         2. Create a NEW secret key (or copy pk + sk from the same row)")
+        print("         3. Paste BOTH into .env (no quotes), save, then: make restart")
+        print("       If you recreated postgres/langfuse or changed LANGFUSE_SALT / ENCRYPTION_KEY,")
+        print("       old keys are invalid — always generate new keys after a fresh Langfuse DB.")
         return 1
 
-    _apply_langfuse_env()
-    from langfuse import get_client
-
-    client = get_client(public_key=settings.langfuse_public_key)
+    client = get_langfuse_client()
     with client.start_as_current_span(name="smoke-test") as span:
         span.update(input={"hello": "world"}, output={"status": "ok"})
     flush_langfuse_traces()
