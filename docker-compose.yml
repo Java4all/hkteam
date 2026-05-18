@@ -64,6 +64,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-crisis}:${POSTGRES_PASSWORD:-crisis}@postgres:5432/${POSTGRES_DB:-crisis}
       LANGFUSE_HOST: http://langfuse:3000
       LANGFUSE_ENABLED: "true"
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
     volumes:
       - ./configs:/app/configs:ro
       - ./data:/app/data:ro
