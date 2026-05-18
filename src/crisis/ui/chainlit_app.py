@@ -9,6 +9,9 @@ import chainlit as cl
 import httpx
 import yaml
 
+from crisis.agents.display import agent_display_name, format_agent_list
+from crisis.agents.recommendations import agent_id_from_recommendation_id
+
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
 _EXAMPLES_YAML = Path(__file__).resolve().parents[3] / "data" / "examples" / "incidents.yaml"
 
@@ -95,11 +98,16 @@ async def on_message(message: cl.Message):
 
     routing = data.get("routing", {})
     summary = data.get("summary", {})
-    agents = ", ".join(routing.get("selected", []))
+    agents = format_agent_list(routing.get("selected", []))
     narrative = summary.get("narrative", "")
     recs = summary.get("ranked_recommendations", [])
 
-    rec_lines = "\n".join(f"{i+1}. [{r['priority']}] {r['action']}" for i, r in enumerate(recs[:8]))
+    def _format_rec(i: int, r: dict) -> str:
+        aid = agent_id_from_recommendation_id(r.get("id", ""))
+        label = agent_display_name(aid) if aid else "Specialist"
+        return f"{i + 1}. **{label}** — {r['action']}"
+
+    rec_lines = "\n".join(_format_rec(i, r) for i, r in enumerate(recs[:12]))
     trace = "\n".join(f"- {t}" for t in data.get("trace", [])[-8:])
 
     actions = [

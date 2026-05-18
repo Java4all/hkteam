@@ -16,6 +16,7 @@ else:
     os.environ.setdefault("CRISIS_USE_MOCK_LLM", "false")
     print("(Using NVIDIA cloud LLM — multimodel profile.)\n")
 
+from crisis.agents.display import agent_display_name
 from crisis.graph.incident_graph import run_incident_pipeline
 from crisis.models.schemas import IncidentReport
 
@@ -53,8 +54,8 @@ def main() -> int:
         print(f"  Categories: {[c.value for c in inc.categories]}")
         print(f"  Severity: {inc.severity.value}")
         print(f"  Specialists: {routing.selected} ({routing.selection_mode})")
-        for aid, out in (state.get("specialist_outputs") or {}).items():
-            print(f"    - {aid}: workflow={out.workflow_id} model={out.llm_model} provider={out.llm_provider}")
+        for aid in (state.get("specialist_outputs") or {}):
+            print(f"    - {agent_display_name(aid)}")
         summary = state["incident_summary"]
         print(f"  Recommendations: {len(summary.ranked_recommendations)}")
         print(f"  Trace: {' -> '.join(state.get('trace', []))}")

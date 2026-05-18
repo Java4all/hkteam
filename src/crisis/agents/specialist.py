@@ -6,6 +6,7 @@ import uuid
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from crisis.agents.recommendations import parse_recommendation_bullets
 from crisis.agents.workflow_select import select_workflow
 from crisis.llm.registry import get_llm, resolve_profile
 from crisis.models.enums import SpecialistStatus
@@ -25,12 +26,12 @@ def _parse_llm_output(agent_id: str, workflow_id: str, text: str, evidence_raw: 
         for e in evidence_raw
     ]
     recs: list[Recommendation] = []
-    for i, line in enumerate(re.findall(r"^[-*]\s+(.+)$", text, re.M)):
+    for i, action in enumerate(parse_recommendation_bullets(text)):
         recs.append(
             Recommendation(
                 id=f"rec-{agent_id}-{i+1}",
                 priority=min(5, i + 1),
-                action=line.strip(),
+                action=action,
                 rationale=f"From {agent_id} analysis ({workflow_id})",
                 evidence_ids=[evidence[0].id] if evidence else [],
             )
@@ -90,7 +91,10 @@ def run_specialist(agent_id: str, handoff: RouterHandoff) -> SpecialistOutput:
         content=(
             f"You are the {agent_id} specialist for a city crisis EOC. "
             "Use ONLY the context provided. Output Markdown with:\n"
-            "## Summary\n## Recommendations (bullet list)\n## Communication\n"
+            "## Summary\n## Recommendations\n"
+            "Under Recommendations, list 3–5 bullet lines. Each bullet must be one "
+            "clear, imperative action (no section headers, no [1]/[2] labels, no "
+            "background narrative).\n## Communication\n"
         )
     )
     human = HumanMessage(
