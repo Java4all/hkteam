@@ -74,6 +74,16 @@ diagnose-chainlit: ## Debug Chainlit blank UI / project/settings 500
 	chmod +x scripts/diagnose-chainlit.sh
 	bash scripts/diagnose-chainlit.sh
 
+langfuse-keys-help: ## Print where API keys live in Langfuse v3 UI
+	@echo "Langfuse API keys are per PROJECT, not under Organization settings."
+	@echo ""
+	@echo "  1. Open http://localhost:3000"
+	@echo "  2. Sidebar: click a project (or '+ New project')"
+	@echo "  3. Project → Settings → API Keys"
+	@echo ""
+	@echo "Wrong URL (no API keys): /organization/.../settings"
+	@echo "Optional: LANGFUSE_INIT_* in .env — see .env.example and docs/DOCKER.md"
+
 verify-langfuse-keys: ## HTTP check that .env pk/sk match running Langfuse
 	chmod +x scripts/verify-langfuse-keys.sh
 	bash scripts/verify-langfuse-keys.sh

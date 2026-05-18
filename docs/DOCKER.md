@@ -53,15 +53,40 @@ Open:
 
 ## Langfuse API keys (one-time)
 
-1. Open http://localhost:3000
-2. Sign up / create organization and project
-3. Settings → API keys → copy public + secret key
-4. Add to `.env`:
-   ```env
-   LANGFUSE_PUBLIC_KEY=pk-lf-...
-   LANGFUSE_SECRET_KEY=sk-lf-...
-   ```
-5. `make restart`
+**API keys are project-scoped.** The URL  
+`/organization/.../settings` is **organization** settings (members, billing) — there is **no API Keys tab** there.
+
+### Option A — UI (existing org)
+
+1. Open http://localhost:3000 (not the organization settings URL).
+2. In the **left sidebar**, select a **project** (or click **+ New project**).
+3. Open **project** **Settings** (gear while inside the project, not org settings).
+4. Open **API Keys** → create or copy **public** + **secret** from the **same** row.
+5. Paste into `.env` (no quotes), then `make restart`.
+
+When you **create a new project**, Langfuse shows the key pair once in a dialog — copy it immediately.
+
+### Option B — Headless bootstrap (fresh Langfuse DB)
+
+Set in `.env` (uncomment and align public/secret with `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`):
+
+```env
+LANGFUSE_INIT_ORG_ID=crisis-demo
+LANGFUSE_INIT_PROJECT_ID=crisis
+LANGFUSE_INIT_PROJECT_PUBLIC_KEY=pk-lf-...
+LANGFUSE_INIT_PROJECT_SECRET_KEY=sk-lf-...
+LANGFUSE_INIT_USER_EMAIL=admin@example.com
+LANGFUSE_INIT_USER_PASSWORD=ChangeMe123!
+LANGFUSE_PUBLIC_KEY=pk-lf-...   # same as INIT public key
+LANGFUSE_SECRET_KEY=sk-lf-...   # same as INIT secret key
+```
+
+Then recreate Langfuse (only if you can wipe or use a new DB):
+
+```bash
+docker compose --env-file .env up -d --force-recreate langfuse langfuse-worker
+make verify-langfuse-keys
+```
 
 Until keys are set, the app runs but tracing is skipped (warning in API logs).
 
