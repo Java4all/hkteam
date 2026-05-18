@@ -60,12 +60,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniosecret-change-me}
     volumes:
       - crisis_minio:/data
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 8
-      start_period: 10s
+    # Minimal image — no bash/curl; langfuse depends on service_started (not health)
 
   langfuse-worker:
     image: langfuse/langfuse-worker:3
@@ -77,17 +72,22 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_healthy
+        condition: service_started
     environment: &langfuse-env
       DATABASE_URL: postgresql://${POSTGRES_USER:-crisis}:${POSTGRES_PASSWORD:-crisis}@postgres:5432/langfuse
+      DIRECT_URL: postgresql://${POSTGRES_USER:-crisis}:${POSTGRES_PASSWORD:-crisis}@postgres:5432/langfuse
       NEXTAUTH_URL: ${LANGFUSE_NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-change-me-langfuse-secret-min-32-chars}
       SALT: ${LANGFUSE_SALT:-change-me-langfuse-salt-min-32-characters}
       ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       TELEMETRY_ENABLED: "false"
+      HOSTNAME: "0.0.0.0"
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: clickhouse
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse}
       CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      REDIS_CONNECTION_STRING: redis://:${REDIS_AUTH:-crisis-redis-secret}@redis:6379
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_AUTH: ${REDIS_AUTH:-crisis-redis-secret}
@@ -104,6 +104,7 @@ services:
 
   langfuse:
     image: langfuse/langfuse:3
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,12 +113,13 @@ services:
       redis:
         condition: service_healthy
       minio:
-        condition: service_healthy
+        condition: service_started
+      langfuse-worker:
+        condition: service_started
     ports:
       - "${LANGFUSE_PORT:-3000}:3000"
     environment:
       <<: *langfuse-env
-      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-change-me-langfuse-secret-min-32-chars}
       LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/public/health"]
@@ -132,7 +134,7 @@ services:
       postgres:
         condition: service_healthy
       langfuse:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${API_PORT:-8080}:8080"
     env_file: .env

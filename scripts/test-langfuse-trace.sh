@@ -32,9 +32,28 @@ echo "--- Langfuse stack ---"
 
 if ! compose_service_running langfuse; then
   echo ""
-  echo "ERROR: langfuse service is not running."
-  echo "  First boot can take 2–3 minutes: make start  (or: ${COMPOSE[*]} up -d langfuse)"
-  echo "  Check logs: ${COMPOSE[*]} logs langfuse --tail 50"
+  echo "langfuse UI not up yet — starting / waiting (first boot up to ~3 min)..."
+  "${COMPOSE[@]}" up -d langfuse 2>/dev/null || true
+  for i in $(seq 1 36); do
+    if compose_service_running langfuse; then
+      echo "langfuse is up (after ${i}0s)"
+      break
+    fi
+    sleep 10
+  done
+fi
+
+if ! compose_service_running langfuse; then
+  echo ""
+  echo "ERROR: langfuse UI service is not running (langfuse-worker alone is not enough)."
+  echo ""
+  echo "Container state:"
+  "${COMPOSE[@]}" ps -a langfuse 2>/dev/null || true
+  echo ""
+  echo "Recent logs:"
+  "${COMPOSE[@]}" logs langfuse --tail 40 2>/dev/null || true
+  echo ""
+  echo "Try: ${COMPOSE[*]} up -d langfuse && ${COMPOSE[*]} logs -f langfuse"
   exit 1
 fi
 
