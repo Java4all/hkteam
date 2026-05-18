@@ -118,7 +118,7 @@ name = "Smart City Crisis Management"
 confirm_new_chat = true
 
 # Description of the assistant. This is used for HTML tags.
-# description = ""
+description = "Emergency Operations Center incident analysis and multi-agency command review."
 
 # Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
 cot = "full"
@@ -129,9 +129,8 @@ custom_css = "/public/crisis.css"
 # Specify additional attributes for a custom CSS file
 # custom_css_attributes = "media=\"print\""
 
-# Specify a JavaScript file that can be used to customize the user interface.
-# The JavaScript file can be served from the public directory.
-# custom_js = "/public/test.js"
+# Force tab icon (cache-bust; overrides default Chainlit pink favicon)
+custom_js = "/public/crisis-favicon.js"
 
 # The style of alert boxes. Can be "classic" or "modern".
 alert_style = "classic"
@@ -152,9 +151,10 @@ alert_style = "classic"
 # Specify a custom meta image url.
 # custom_meta_image_url = "https://chainlit-cloud.s3.eu-west-3.amazonaws.com/logo/chainlit_banner.png"
 
-# Assistant avatar in header / messages (public/logo.svg)
-logo_file_url = "/public/logo.svg"
-default_avatar_file_url = "/public/logo.svg"
+# Tab icon → public/favicon.svg | Header → public/logo_light.svg & logo_dark.svg
+# (served by Chainlit at /favicon and /logo; leave logo_file_url empty)
+logo_file_url = ""
+default_avatar_file_url = ""
 
 # Avatar size in pixels (default: 20).
 # avatar_size = 20

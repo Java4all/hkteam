@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 32" fill="none">
+  <path d="M16 4 26 10.5v11L16 28 6 21.5v-11L16 4Z" stroke="#0e7490" stroke-width="2.2" fill="#ecfeff"/>
+  <circle cx="16" cy="16" r="3.2" fill="#0891b2"/>
+  <text x="36" y="21" font-family="system-ui,Segoe UI,sans-serif" font-size="14" font-weight="600" fill="#0f172a">Smart City Crisis</text>
+</svg>

@@ -6,6 +6,10 @@ import json
 import os
 from pathlib import Path
 
+# Resolve project root (hkteam/) so public/favicon.* is found even when cwd differs.
+_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+os.environ.setdefault("CHAINLIT_APP_ROOT", str(_PROJECT_ROOT))
+
 import chainlit as cl
 import httpx
 import yaml
@@ -152,16 +156,21 @@ async def set_starters():
 async def start():
     await cl.Message(
         content=(
-            "## 🏙️ Smart City Crisis Management\n"
-            "**Multi-agent AI command center** for emergency operations (v1.0)\n\n"
-            "Click a **starter** scenario or paste an incident (`data/examples/*.txt` — "
-            "last line = location).\n\n"
-            "You will see a **live animated pipeline**: classify → route → parallel "
-            "specialists (NVIDIA NeMo) → EOC briefing.\n\n"
-            "Use **Approve**, **Reject**, or **Edit** on each recommendation, then **Submit**.\n\n"
-            "**Example**\n"
-            "> Heavy rainfall and water main break near City General Hospital…\n"
-            "> Sector 7 riverside, Memorial Bridge approach"
+            "## Smart City Crisis Management\n"
+            "**Emergency Operations Center — Incident Analysis Console**\n\n"
+            "This workspace ingests situation reports, coordinates cross-domain "
+            "specialist analysis, and produces a consolidated briefing for command staff. "
+            "Decisions you record here are retained for audit and after-action review.\n\n"
+            "**Submit an incident**\n"
+            "Enter a situation report in the message field below. Place the "
+            "**affected location** on the final line (address, intersection, facility, "
+            "or operational area).\n\n"
+            "**Command review**\n"
+            "When analysis completes, validate each recommendation with "
+            "**Approve**, **Reject**, or **Edit**, then select **Submit** to finalize "
+            "the incident package.\n\n"
+            "Predefined scenario templates are available from the composer for "
+            "exercises and demonstration."
         )
     ).send()
 
@@ -171,7 +180,10 @@ async def on_message(message: cl.Message):
     text = message.content.strip()
     if not text or len(text) < 12:
         await cl.Message(
-            content="Please provide at least 12 characters (description + location)."
+            content=(
+                "Incident report is incomplete. Provide a situation summary and "
+                "affected location (location on the last line)."
+            )
         ).send()
         return
 

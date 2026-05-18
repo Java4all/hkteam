@@ -194,9 +194,13 @@ services:
     # Do not use env_file here — Langfuse/DB vars can break Chainlit settings endpoint
     environment:
       API_BASE_URL: http://api:8080
+      CHAINLIT_APP_ROOT: /app
       CHAINLIT_URL: ${CHAINLIT_URL:-http://localhost:7860}
       CRISIS_PIPELINE_TIMEOUT: ${CRISIS_PIPELINE_TIMEOUT:-300}
       PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./public:/app/public:ro
+      - ./.chainlit:/app/.chainlit:ro
     working_dir: /app
     command:
       [

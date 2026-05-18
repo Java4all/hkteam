@@ -29,3 +29,29 @@
     opacity: 0.45;
   }
 }
+
+/* Pipeline progress (HTML in markdown messages) */
+.crisis-progress-wrap {
+  margin: 0.5rem 0 1rem;
+  max-width: 420px;
+}
+
+.crisis-progress-meta {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin-bottom: 0.35rem;
+}
+
+.crisis-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #334155;
+  overflow: hidden;
+}
+
+.crisis-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0891b2, #22d3ee);
+  transition: width 0.35s ease;
+}

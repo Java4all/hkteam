@@ -47,9 +47,18 @@ def _progress_counts(stages: list[dict]) -> tuple[int, int, int, int]:
     return complete, total, running, errors
 
 
-def _progress_bar(complete: int, total: int, width: int = 18) -> str:
-    filled = int(width * complete / max(total, 1))
-    return f"`{'█' * filled}{'░' * (width - filled)}` {complete}/{total}"
+def _progress_bar(complete: int, total: int) -> str:
+    """HTML progress bar — solid track + fill (no block characters)."""
+    pct = min(100, max(0, int(100 * complete / max(total, 1))))
+    return (
+        '<div class="crisis-progress-wrap">'
+        f'<div class="crisis-progress-meta"><strong>Progress</strong> '
+        f"{complete} of {total} · {pct}%"
+        '</div>'
+        '<div class="crisis-progress-track">'
+        f'<div class="crisis-progress-fill" style="width:{pct}%;"></div>'
+        "</div></div>"
+    )
 
 
 def format_pipeline_progress(
@@ -85,7 +94,7 @@ def format_pipeline_progress(
         "",
         f"> {tagline}",
         "",
-        f"**Progress** {_progress_bar(complete, total)}",
+        _progress_bar(complete, total),
         "",
     ]
 

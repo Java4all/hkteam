@@ -9,8 +9,9 @@ def test_progress_shows_spinner_when_active():
     ]
     text = format_pipeline_progress(stages, frame=1, active=True)
     assert "Progress" in text
+    assert "crisis-progress-track" in text
+    assert "crisis-progress-fill" in text
     assert any(c in text for c in ("◐", "◓", "◑", "◒", "◉"))
-    assert "█" in text
 
 
 def test_progress_complete_banner():

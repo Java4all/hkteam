@@ -1,10 +1,7 @@
 # Smart City Crisis Management
 
-Click a **starter** below or paste from `data/examples/` (see `data/examples/README.md`).
+**Emergency Operations Center — Incident Analysis Console**
 
-**Format:** description on one or more lines, **location on the last line**.
+Submit a situation report using the message composer. Place the **affected location** on the final line of your message.
 
-Example (`01-utilities-water-main.txt`):
-
-> Major water main rupture. Water flooding Oak Street.
-> Oak Street, Sector 7 (near City General Hospital)
+When analysis completes, review recommendations and record decisions with **Approve**, **Reject**, or **Edit**, then **Submit** to finalize the incident package.
