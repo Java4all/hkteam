@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+# Smooth quarter-circle spinner (reads cleaner than Braille in tables)
+SPINNER_FRAMES = ("◐", "◓", "◑", "◒")
 
 _AGENT_ICON = {
     "flood": "🌊",
@@ -14,11 +15,11 @@ _AGENT_ICON = {
 }
 
 _STATUS_ICON = {
-    "pending": "⏳",
-    "running": "🔄",
-    "complete": "✅",
-    "error": "❌",
-    "skipped": "⏭️",
+    "pending": "○",
+    "running": "◉",
+    "complete": "✓",
+    "error": "✕",
+    "skipped": "—",
 }
 
 
@@ -60,7 +61,7 @@ def format_pipeline_progress(
 ) -> str:
     """Rich markdown for live pipeline updates (demo / operator visibility)."""
     if not stages:
-        spinner = SPINNER_FRAMES[frame % len(SPINNER_FRAMES)] if active else "⏳"
+        spinner = SPINNER_FRAMES[frame % len(SPINNER_FRAMES)] if active else "○"
         return (
             f"### {spinner} Crisis Response Command Center\n\n"
             "_Connecting to multi-agent orchestration…_"

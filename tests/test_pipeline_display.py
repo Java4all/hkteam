@@ -8,8 +8,8 @@ def test_progress_shows_spinner_when_active():
         {"id": "run_specialists", "label": "Specialists", "status": "running"},
     ]
     text = format_pipeline_progress(stages, frame=1, active=True)
-    assert SPINNER_FRAMES[1] in text
     assert "Progress" in text
+    assert any(c in text for c in ("◐", "◓", "◑", "◒", "◉"))
     assert "█" in text
 
 

@@ -1,19 +1,22 @@
-/* Smart City Crisis Management — demo polish for Chainlit 2.11+ */
+/* Smart City Crisis Management — enterprise UI (Chainlit 2.11+) */
 
 :root {
-  --loading-cursor-size: 1.1rem;
-  --loading-cursor-animation: crisis-spin 0.85s linear infinite;
-  --loading-cursor-color: hsl(199, 89%, 48%);
+  /* Professional teal spinner (replaces default pink petal icon) */
+  --loading-cursor-size: 1.125rem;
+  --loading-cursor-color: #0891b2;
+  --loading-cursor-animation: crisis-spin 0.75s linear infinite;
+  --loading-cursor-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Ccircle cx='12' cy='12' r='9' stroke='%230891b2' stroke-width='2.5' opacity='0.2'/%3E%3Cpath d='M12 3a9 9 0 0 1 9 9' stroke='%230891b2' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E");
+
+  --stop-icon-color: #64748b;
+  --stop-icon-animation: crisis-pulse 1.6s ease-in-out infinite;
 }
 
 @keyframes crisis-spin {
   from {
     transform: rotate(0deg);
-    opacity: 1;
   }
   to {
     transform: rotate(360deg);
-    opacity: 0.85;
   }
 }
 
@@ -23,6 +26,6 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.55;
+    opacity: 0.45;
   }
 }

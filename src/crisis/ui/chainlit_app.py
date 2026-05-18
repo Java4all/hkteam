@@ -11,7 +11,6 @@ import httpx
 import yaml
 
 from crisis.agents.display import agent_display_name, format_agent_list
-from crisis.agents.recommendations import agent_id_from_recommendation_id
 from crisis.ui.pipeline_animator import PipelineProgressUI
 from crisis.ui.pipeline_display import format_pipeline_stages
 from crisis.ui.review_panel import (
@@ -19,10 +18,9 @@ from crisis.ui.review_panel import (
     build_rec_card_actions,
     empty_review_state,
     format_rec_card,
-    format_review_summary,
+    format_recommendations_header,
     review_cards_key,
     review_session_key,
-    review_summary_key,
     unique_recommendations_for_review,
 )
 
@@ -42,12 +40,6 @@ def _load_example_incidents() -> list[dict]:
         return []
     data = yaml.safe_load(_EXAMPLES_YAML.read_text(encoding="utf-8")) or {}
     return list(data.get("examples") or [])
-
-
-def _format_rec(i: int, r: dict) -> str:
-    aid = agent_id_from_recommendation_id(r.get("id", ""))
-    label = agent_display_name(aid) if aid else "Specialist"
-    return f"{i + 1}. **{label}** — {r['action']}"
 
 
 def _format_api_error(exc: httpx.HTTPError) -> str:
@@ -166,8 +158,7 @@ async def start():
             "last line = location).\n\n"
             "You will see a **live animated pipeline**: classify → route → parallel "
             "specialists (NVIDIA NeMo) → EOC briefing.\n\n"
-            "Then use **Operator review** to approve, reject, or edit **each** "
-            "recommendation before submit.\n\n"
+            "Use **Approve**, **Reject**, or **Edit** on each recommendation, then **Submit**.\n\n"
             "**Example**\n"
             "> Heavy rainfall and water main break near City General Hospital…\n"
             "> Sector 7 riverside, Memorial Bridge approach"
@@ -237,7 +228,6 @@ async def on_message(message: cl.Message):
     agents = format_agent_list(routing.get("selected", []))
     narrative = summary.get("narrative", "")
     recs = summary.get("ranked_recommendations", [])
-    rec_lines = "\n".join(_format_rec(i, r) for i, r in enumerate(recs[:12]))
     stage_table = format_pipeline_stages(stages or data.get("pipeline_stages", []))
 
     failed_agents = summary.get("agents_failed") or []
@@ -256,8 +246,7 @@ async def on_message(message: cl.Message):
             f"**Specialists:** {agents}\n"
             f"**Routing:** {routing.get('rationale', '')}{failed_note}\n\n"
             f"### Pipeline summary\n{stage_table}\n\n"
-            f"### 📋 EOC Briefing\n{narrative}\n\n"
-            f"### Recommendations (preview)\n{rec_lines or '_(none)_'}"
+            f"### 📋 EOC Briefing\n{narrative}"
         ),
     ).send()
 
@@ -266,12 +255,14 @@ async def on_message(message: cl.Message):
 
 
 async def _send_review_panel(iid: str, recs: list[dict]) -> None:
+    if not recs:
+        await cl.Message(content="## Recommendations\n\n_(none)_").send()
+        return
+
     state = empty_review_state(recs)
     cl.user_session.set(review_session_key(iid), state)
 
-    summary = cl.Message(content=format_review_summary(iid, state))
-    await summary.send()
-    cl.user_session.set(review_summary_key(iid), summary)
+    await cl.Message(content=format_recommendations_header()).send()
 
     card_msgs: dict[str, cl.Message] = {}
     for i, r in enumerate(recs):
@@ -284,26 +275,13 @@ async def _send_review_panel(iid: str, recs: list[dict]) -> None:
         card_msgs[rid] = card
     cl.user_session.set(review_cards_key(iid), card_msgs)
 
-    footer = cl.Message(
-        content="**Submit** when every card is ✅ Approved or ❌ Rejected.",
-        actions=build_footer_actions(iid),
-    )
+    footer = cl.Message(content="", actions=build_footer_actions(iid))
     await footer.send()
     cl.user_session.set(f"review_footer_{iid}", footer)
 
 
 def _get_review_state(iid: str) -> dict | None:
     return cl.user_session.get(review_session_key(iid))
-
-
-async def _refresh_review_summary(iid: str) -> None:
-    state = _get_review_state(iid)
-    if not state:
-        return
-    summary = cl.user_session.get(review_summary_key(iid))
-    if summary:
-        summary.content = format_review_summary(iid, state)
-        await summary.update()
 
 
 async def _refresh_rec_card(iid: str, rec_id: str) -> None:
@@ -320,7 +298,6 @@ async def _refresh_rec_card(iid: str, rec_id: str) -> None:
             msg.actions = build_rec_card_actions(iid, rec_id, i, state)
             await msg.update()
             break
-    await _refresh_review_summary(iid)
 
 
 @cl.action_callback("approve_rec")
@@ -329,7 +306,7 @@ async def approve_rec(action: cl.Action):
     rec_id = action.payload["rec_id"]
     state = _get_review_state(iid)
     if not state:
-        await cl.Message(content="Review session expired — run a new incident.").send()
+        await cl.Message(content="Session expired — run a new incident.").send()
         return
     if rec_id in state["approved"]:
         state["approved"].remove(rec_id)
@@ -347,7 +324,7 @@ async def reject_rec(action: cl.Action):
     rec_id = action.payload["rec_id"]
     state = _get_review_state(iid)
     if not state:
-        await cl.Message(content="Review session expired — run a new incident.").send()
+        await cl.Message(content="Session expired — run a new incident.").send()
         return
     if rec_id in state["rejected"]:
         state["rejected"].remove(rec_id)
@@ -366,7 +343,7 @@ async def edit_rec(action: cl.Action):
     idx = int(action.payload.get("idx", 0))
     state = _get_review_state(iid)
     if not state:
-        await cl.Message(content="Review session expired — run a new incident.").send()
+        await cl.Message(content="Session expired — run a new incident.").send()
         return
     original = state["modified"].get(rec_id)
     if not original:
@@ -376,7 +353,7 @@ async def edit_rec(action: cl.Action):
                 break
     res = await cl.AskUserMessage(
         content=(
-            f"**Edit recommendation #{idx + 1}**\n\n"
+            f"**Edit recommendation {idx + 1}**\n\n"
             f"Current text:\n> {original}\n\n"
             "Enter the revised action (one or two sentences):"
         ),
@@ -399,7 +376,7 @@ async def submit_review(action: cl.Action):
     iid = action.payload.get("id") or cl.user_session.get("incident_id")
     state = _get_review_state(iid)
     if not state:
-        await cl.Message(content="Review session expired.").send()
+        await cl.Message(content="Session expired.").send()
         return
     recs = state["recommendations"]
     pending = [
@@ -410,8 +387,8 @@ async def submit_review(action: cl.Action):
     if pending:
         await cl.Message(
             content=(
-                f"**{len(pending)} recommendation(s) still pending.** "
-                "Use ✅/❌ on each row, or Approve all / Reject all."
+                f"**{len(pending)} recommendation(s) not decided.** "
+                "Use Approve or Reject on each, or Approve all / Reject all."
             )
         ).send()
         return

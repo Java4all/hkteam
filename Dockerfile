@@ -18,6 +18,8 @@ RUN pip install --no-cache-dir -U pip \
     && python -m chainlit init \
     && sed -i 's/^name = "Assistant"/name = "Smart City Crisis Management"/' .chainlit/config.toml \
     && sed -i 's|^# custom_css = "/public/test.css"|custom_css = "/public/crisis.css"|' .chainlit/config.toml \
+    && sed -i 's|^logo_file_url = ""|logo_file_url = "/public/logo.svg"|' .chainlit/config.toml \
+    && sed -i 's|^default_avatar_file_url = ""|default_avatar_file_url = "/public/logo.svg"|' .chainlit/config.toml \
     && python -c "from chainlit.config import load_config; c=load_config(); print('chainlit config OK:', c.ui.name)"
 
 ENV PYTHONUNBUFFERED=1
