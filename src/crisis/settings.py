@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     nim_local_base_url: str = "http://127.0.0.1:8000/v1"
     llm_profile: str = "multimodel"
     crisis_use_mock_llm: bool = False
+    crisis_llm_timeout: float = 90.0
 
     langfuse_enabled: bool = True
     langfuse_public_key: str = ""

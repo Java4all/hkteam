@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterator
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from crisis.agents.display import agent_display_name
@@ -22,8 +23,15 @@ from crisis.pipeline.events import (
     stages_to_trace,
 )
 from crisis.agents.specialist import run_specialist
+from crisis.llm.registry import resolve_profile
 
 ProgressCallback = Callable[[dict[str, Any]], None]
+
+
+def _llm_stage_detail(agent_id: str) -> str:
+    profile = resolve_profile(agent_id, "agent")
+    model_short = profile.model.rsplit("/", 1)[-1]
+    return f"{model_short} ({profile.llm_provider})"
 
 
 def _handoff(incident, routing) -> RouterHandoff:
@@ -68,37 +76,55 @@ def _run_specialists_with_progress(
     routing = state["routing_decision"]
     handoff = _handoff(incident, routing)
     outputs: dict[str, SpecialistOutput] = {}
+    agents = list(routing.selected)
+    parallel = routing.execution_mode == "parallel" and len(agents) > 1
+    mode_label = "parallel" if parallel else "sequential"
     stages = apply_stage(
-        stages,
-        "run_specialists",
-        "running",
-        detail=f"{len(routing.selected)} agent(s)",
+        stages, "run_specialists", "running", detail=f"{len(agents)} agent(s), {mode_label}"
     )
     _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
 
-    agents = list(routing.selected)
-    for aid in agents:
+    def _record_result(aid: str, out: SpecialistOutput, err: str | None) -> None:
+        nonlocal stages
+        outputs[aid] = out
         stages = apply_stage(
-            stages, f"specialist:{aid}", "running", detail="calling LLM"
+            stages,
+            f"specialist:{aid}",
+            "complete" if out.status == SpecialistStatus.COMPLETE else "error",
+            detail=f"{out.duration_ms}ms" if not err else "failed",
+            error=err or (
+                None
+                if out.status == SpecialistStatus.COMPLETE
+                else "; ".join(out.check_notes) or None
+            ),
         )
         _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
+
+    def _run_one(aid: str) -> tuple[str, SpecialistOutput, str | None]:
         try:
-            out = run_specialist(aid, handoff)
-            outputs[aid] = out
-            stages = apply_stage(
-                stages,
-                f"specialist:{aid}",
-                "complete" if out.status == SpecialistStatus.COMPLETE else "error",
-                detail=f"{out.duration_ms}ms",
-                error=None if out.status == SpecialistStatus.COMPLETE else "; ".join(out.check_notes),
-            )
+            return aid, run_specialist(aid, handoff), None
         except Exception as exc:
-            err = str(exc)
-            outputs[aid] = _failed_output(aid, "unknown", err)
+            return aid, _failed_output(aid, "unknown", str(exc)), str(exc)
+
+    if parallel:
+        for aid in agents:
             stages = apply_stage(
-                stages, f"specialist:{aid}", "error", detail="failed", error=err
+                stages, f"specialist:{aid}", "running", detail=_llm_stage_detail(aid)
             )
         _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
+        with ThreadPoolExecutor(max_workers=min(len(agents), 4)) as pool:
+            futures = {pool.submit(_run_one, aid): aid for aid in agents}
+            for fut in as_completed(futures):
+                aid, out, err = fut.result()
+                _record_result(aid, out, err)
+    else:
+        for aid in agents:
+            stages = apply_stage(
+                stages, f"specialist:{aid}", "running", detail=_llm_stage_detail(aid)
+            )
+            _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
+            aid, out, err = _run_one(aid)
+            _record_result(aid, out, err)
 
     done = ",".join(outputs.keys())
     failed = [a for a, o in outputs.items() if o.status in (SpecialistStatus.FAILED, SpecialistStatus.TIMEOUT)]

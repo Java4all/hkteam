@@ -90,7 +90,8 @@ assignments:
     infrastructure: cloud_nemotron_nano_8b
     public_services: cloud_phi_mini
     public_safety: cloud_nemotron_nano_8b
-    comms: cloud_phi_mini
+    # Same fast cloud model as flood/utilities (phi-4 was noticeably slower on integrate API)
+    comms: cloud_nemotron_nano_8b
     general: cloud_nemotron_nano_8b
     utilities: cloud_nemotron_nano_8b
 

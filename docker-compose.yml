@@ -173,6 +173,7 @@ services:
       NIM_CLOUD_BASE_URL: ${NIM_CLOUD_BASE_URL:-https://integrate.api.nvidia.com/v1}
       LLM_PROFILE: ${LLM_PROFILE:-multimodel}
       CRISIS_USE_MOCK_LLM: ${CRISIS_USE_MOCK_LLM:-false}
+      CRISIS_LLM_TIMEOUT: ${CRISIS_LLM_TIMEOUT:-90}
     volumes:
       - ./configs:/app/configs:ro
       - ./data:/app/data:ro
