@@ -64,7 +64,12 @@ def resolve_profile(agent_id: str | None = None, role: str = "agent") -> LlmProf
     return _profile_from_dict(profile_id, profiles[profile_id])
 
 
-def get_llm(agent_id: str | None = None, role: str = "agent") -> BaseChatModel:
+def get_llm(
+    agent_id: str | None = None,
+    role: str = "agent",
+    *,
+    profile_id: str | None = None,
+) -> BaseChatModel:
     if settings.crisis_use_mock_llm:
         return MockCrisisLLM(agent_id=agent_id or "general", role=role)
 
@@ -74,11 +79,28 @@ def get_llm(agent_id: str | None = None, role: str = "agent") -> BaseChatModel:
             "or CRISIS_USE_MOCK_LLM=true for offline smoke tests."
         )
 
-    profile = resolve_profile(agent_id, role)
+    cfg = _llm_config()
+    profiles = cfg.get("profiles") or {}
+    if profile_id and profile_id in profiles:
+        profile = _profile_from_dict(profile_id, profiles[profile_id])
+    else:
+        profile = resolve_profile(agent_id, role)
+
+    max_tokens = profile.max_tokens
+    is_specialist = role == "agent"
+    if is_specialist:
+        max_tokens = min(max_tokens, settings.crisis_specialist_max_tokens)
+    req_timeout = (
+        settings.crisis_specialist_llm_timeout
+        if is_specialist
+        else settings.crisis_llm_timeout
+    )
     return build_chat_model(
         model=profile.model,
         base_url=profile.base_url,
         api_key=settings.nvidia_api_key,
         temperature=profile.temperature,
-        max_tokens=profile.max_tokens,
+        max_tokens=max_tokens,
+        timeout=req_timeout,
+        max_retries=0 if is_specialist else 1,
     )

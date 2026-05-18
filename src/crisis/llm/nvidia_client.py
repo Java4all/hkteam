@@ -31,6 +31,7 @@ def build_chat_model(
     temperature: float,
     max_tokens: int,
     timeout: float | None = None,
+    max_retries: int = 1,
 ) -> BaseChatModel:
     """Hosted cloud uses OpenAI-compatible client; local NIM uses ChatNVIDIA."""
     api_key = api_key.strip()
@@ -50,7 +51,7 @@ def build_chat_model(
             temperature=temperature,
             max_tokens=max_tokens,
             timeout=req_timeout,
-            max_retries=1,
+            max_retries=max_retries,
         )
 
     from langchain_nvidia_ai_endpoints import ChatNVIDIA

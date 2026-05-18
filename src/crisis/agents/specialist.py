@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from crisis.agents.config_loader import load_agent_config
 from crisis.agents.workflow_engine import run_agent_workflow
+from crisis.agents.workflow_progress import SpecialistStepCallback
 from crisis.agents.workflow_select import select_workflow
 from crisis.models.schemas import RouterHandoff, SpecialistOutput
 from crisis.agents.errors import AgentConfigError
@@ -15,6 +16,7 @@ def run_specialist(
     handoff: RouterHandoff,
     *,
     depth: int = 0,
+    on_step: SpecialistStepCallback | None = None,
 ) -> SpecialistOutput:
     """
     Run the specialist's configured workflow (configs/agents/{agent_id}.yaml).
@@ -43,6 +45,7 @@ def run_specialist(
         selection_rationale=rationale,
         depth=depth,
         child_runner=_run_child_agent,
+        on_step=on_step,
     )
 
 

@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from crisis.llm.errors import is_llm_timeout
 from crisis.llm.invoke import invoke_chat
-from crisis.llm.registry import get_llm
+from crisis.llm.registry import get_llm, resolve_profile
+from crisis.settings import settings
+
+logger = logging.getLogger(__name__)
+
+_LLM_CONTEXT_MAX = 6000
 from crisis.skills.knowledge import enrich_agent_context
 
 
@@ -80,7 +88,10 @@ def _draft_recommendation(
     else:
         parts.extend(prior.values())
     context = "\n\n".join(parts) if parts else "(no prior steps)"
+    if len(context) > _LLM_CONTEXT_MAX:
+        context = context[:_LLM_CONTEXT_MAX] + "\n\n…(context truncated)"
 
+    profile = resolve_profile(agent_id, "agent")
     llm = get_llm(agent_id, "agent")
     workflow_id = handoff_context.get("workflow_id", "unknown")
     sys = SystemMessage(
@@ -100,7 +111,32 @@ def _draft_recommendation(
             f"Context:\n{context}"
         )
     )
-    resp = invoke_chat(llm, [sys, human])
+    messages = [sys, human]
+    logger.info(
+        "specialist %s: LLM draft start model=%s timeout=%ss",
+        agent_id,
+        profile.model,
+        settings.crisis_specialist_llm_timeout,
+    )
+    t0 = time.perf_counter()
+    try:
+        resp = invoke_chat(llm, messages)
+    except Exception as exc:
+        fallback = settings.crisis_specialist_fallback_profile
+        if is_llm_timeout(exc) and profile.profile_id != fallback:
+            logger.warning(
+                "specialist %s: timeout on %s — retrying with %s",
+                agent_id,
+                profile.model,
+                fallback,
+            )
+            llm_fast = get_llm(agent_id, "agent", profile_id=fallback)
+            resp = invoke_chat(llm_fast, messages)
+        else:
+            logger.warning("specialist %s: LLM draft failed: %s", agent_id, exc)
+            raise
+    elapsed_ms = int((time.perf_counter() - t0) * 1000)
+    logger.info("specialist %s: LLM draft done in %dms", agent_id, elapsed_ms)
     return getattr(resp, "content", str(resp))
 
 

@@ -25,7 +25,13 @@ class Settings(BaseSettings):
     nim_local_base_url: str = "http://127.0.0.1:8000/v1"
     llm_profile: str = "multimodel"
     crisis_use_mock_llm: bool = False
-    crisis_llm_timeout: float = 90.0
+    crisis_llm_timeout: float = 120.0
+    # Specialist draft calls (nemotron-nano on integrate API can be slow)
+    crisis_specialist_llm_timeout: float = 120.0
+    # Cap tokens for specialist draft_recommendation (faster cloud responses)
+    crisis_specialist_max_tokens: int = 1536
+    # On timeout, retry once with this profile (fast nemotron-mini)
+    crisis_specialist_fallback_profile: str = "cloud_nemotron_mini"
     # Max nested subagent invocations from workflow "subagent" actions
     crisis_max_subagent_depth: int = 2
     # Force workflows: flood:flood_critical,utilities:utilities_hospital_priority

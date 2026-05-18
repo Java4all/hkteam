@@ -574,7 +574,7 @@ Profiles are reusable client settings (`base_url`, `model`, temperature, `max_to
 | Specialist **infrastructure** | `cloud_nemotron_nano_8b` | same | `configs/agents/infrastructure.yaml` |
 | Specialist **public_safety** | `cloud_nemotron_nano_8b` | same | `configs/agents/public_safety.yaml` |
 | Specialist **general** | `cloud_nemotron_nano_8b` | same | `configs/agents/general.yaml` |
-| Specialist **cyber** | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | `configs/agents/cyber.yaml` |
+| Specialist **cyber** | `cloud_nemotron_mini` | `nvidia/nemotron-mini-4b-instruct` | `configs/agents/cyber.yaml` (fast; timeout fallback in code) |
 | Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | `configs/agents/public_services.yaml` |
 | Specialist **comms** | `cloud_nemotron_nano_8b` | same | Router adds for HIGH/CRITICAL; subagent from flood |
 
@@ -656,7 +656,7 @@ Invoke from the `nat_workflow` action via in-process runner (planned future rele
 
 ### 9.1 Observability — Langfuse v3
 
-Self-hosted **Langfuse v3** (`langfuse/langfuse:3`, worker, ClickHouse, Redis, MinIO). Each incident run opens `langfuse_incident_session(incident_id)`; all `invoke_chat()` calls attach the Langfuse `CallbackHandler`; `flush()` runs at end of session. Setup: [DOCKER.md](DOCKER.md). Disable in tests: `LANGFUSE_ENABLED=false`.
+Self-hosted **Langfuse v3** (`langfuse/langfuse:3`, worker, ClickHouse, Redis, MinIO). Production runs **`build_incident_graph().stream(..., config=CallbackHandler)`** so Langfuse shows **LangGraph nodes** (`intake`, `smart_route`, `run_specialists`, `aggregate`). LLM calls inside specialists appear as child **BaseChatOpenAI** spans. Setup: [DOCKER.md](DOCKER.md). Disable in tests: `LANGFUSE_ENABLED=false`.
 
 | Signal | Tags |
 |--------|------|

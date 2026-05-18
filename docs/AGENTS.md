@@ -12,7 +12,7 @@ Diagram: [diagrams/orchestration.mmd](diagrams/orchestration.mmd) · [diagrams/a
 | flood | flood_standard | cloud_nemotron_nano_8b | [flood.yaml](../configs/agents/flood.yaml) |
 | utilities | utilities_standard | cloud_nemotron_nano_8b | [utilities.yaml](../configs/agents/utilities.yaml) |
 | infrastructure | infra_standard | cloud_nemotron_nano_8b | [infrastructure.yaml](../configs/agents/infrastructure.yaml) |
-| cyber | cyber_containment | cloud_nemotron_nano_8b | [cyber.yaml](../configs/agents/cyber.yaml) |
+| cyber | cyber_containment | cloud_nemotron_mini | [cyber.yaml](../configs/agents/cyber.yaml) |
 | comms | comms_standard | cloud_nemotron_nano_8b | [comms.yaml](../configs/agents/comms.yaml) |
 | public_safety | public_safety_restricted | cloud_nemotron_nano_8b | [public_safety.yaml](../configs/agents/public_safety.yaml) |
 | public_services | services_standard | cloud_phi_mini | [public_services.yaml](../configs/agents/public_services.yaml) |

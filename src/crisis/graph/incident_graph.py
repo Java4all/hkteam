@@ -55,6 +55,22 @@ def _handoff(incident, routing) -> RouterHandoff:
 
 
 def node_run_specialists(state: IncidentState) -> IncidentState:
+    from crisis.pipeline.progress_context import get_pipeline_progress
+    from crisis.pipeline.specialists import run_specialists_with_progress
+
+    ctx = get_pipeline_progress()
+    if ctx is not None:
+        new_state, new_stages = run_specialists_with_progress(
+            state, ctx.stages, ctx.on_progress
+        )
+        ctx.stages.clear()
+        ctx.stages.extend(new_stages)
+        return {
+            "specialist_outputs": new_state.get("specialist_outputs"),
+            "trace": new_state.get("trace"),
+        }
+
+    # Direct graph invoke without UI progress (tests / scripts)
     incident = state["incident"]
     routing = state["routing_decision"]
     handoff = _handoff(incident, routing)

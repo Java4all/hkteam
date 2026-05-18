@@ -86,9 +86,8 @@ assignments:
 
   agents:
     flood: cloud_nemotron_nano_8b
-    # Use nemotron-nano (same as other specialists). mistral-7b often 404s until enabled
-    # on build.nvidia.com for your account ("Function id … version null").
-    cyber: cloud_nemotron_nano_8b
+    # Fast mini model — nemotron-nano often times out on integrate API for cyber-sized prompts
+    cyber: cloud_nemotron_mini
     infrastructure: cloud_nemotron_nano_8b
     public_services: cloud_phi_mini
     public_safety: cloud_nemotron_nano_8b

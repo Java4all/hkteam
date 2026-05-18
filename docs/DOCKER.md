@@ -72,9 +72,12 @@ docker compose --env-file .env up -d --force-recreate api chainlit
 
 | Issue | Fix |
 |-------|-----|
-| No traces after incidents | Keys in `.env` (`pk-lf-` / `sk-lf-`); `curl http://127.0.0.1:8080/health` → `langfuse.auth_ok: true`; `make test-langfuse` (smoke trace); rebuild **api** after code changes. Traces are created per **LLM call** during an incident (`invoke_chat` + `langfuse_incident_session`). Filter UI by session = `INC-…` incident id. |
+| No traces after incidents | Keys in `.env` (`pk-lf-` / `sk-lf-`); `curl http://127.0.0.1:8080/health` → `langfuse.auth_ok: true`; `make test-langfuse`; rebuild **api**. Filter by session = `INC-…`. |
+| Only **BaseChatOpenAI**, no LangGraph nodes | Rebuild **api** — pipeline must use `graph.stream()` (not manual node calls). Expected trace: LangGraph chain → `intake` / `smart_route` / `run_specialists` / `aggregate` → child LLM spans. |
 | Langfuse S3 / Region error | `LANGFUSE_S3_*_REGION=auto`; recreate minio + langfuse |
 | NVIDIA 404 / `Function id … version null` | Enable each model on [build.nvidia.com](https://build.nvidia.com/) for your key; `make verify-nvidia-api` lists per-agent probes. Cyber defaults to nemotron-nano (not mistral) in `multimodel.yaml`. |
+| Specialist “running” a long time (cyber, etc.) | One NVIDIA cloud LLM call (up to `CRISIS_SPECIALIST_LLM_TIMEOUT` s, default 120). UI shows step + elapsed. Logs: `docker compose logs -f api` → `LLM draft start/done`. |
+| Specialist **Request timed out** | Increase `CRISIS_SPECIALIST_LLM_TIMEOUT=180` in `.env`. Cyber uses **nemotron-mini** (fast). On timeout the API auto-retries once with `CRISIS_SPECIALIST_FALLBACK_PROFILE`. Rebuild api after `.env` changes. |
 | Chainlit blank | `CHAINLIT_URL` matches browser; `make diagnose-chainlit`; rebuild chainlit |
 | API → DB errors | `DATABASE_URL` host = `postgres` |
 | `dependency api failed to start` but api logs show Uvicorn OK | API is running but **unhealthy**: old healthcheck hit `/health` (slow NVIDIA probe). Rebuild api; healthcheck uses `/health/live`. Run `docker inspect smart-city-crisis-api-1 --format '{{.State.Health.Status}}'` |

@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from crisis.agents.config_loader import AgentConfig, WorkflowAction, resolve_workflow
+from crisis.agents.workflow_progress import SpecialistStepCallback
 from crisis.agents.output_parse import parse_llm_output
 from crisis.llm.registry import resolve_profile
 from crisis.models.enums import SpecialistStatus
@@ -46,6 +47,25 @@ def _rule_applies(when: str | None, handoff_ctx: dict[str, Any]) -> bool:
     if "severity == CRITICAL" in when:
         return str(handoff_ctx.get("severity", "")).upper() == "CRITICAL"
     return True
+
+
+_STEP_LABELS: dict[str, str] = {
+    "playbook_rag": "Loading playbook",
+    "draft_recommendation": "Calling NVIDIA cloud LLM",
+    "weather_api": "Weather snapshot",
+    "flood_zone_gis": "Flood zone GIS",
+    "evacuation_routes": "Evacuation routes",
+}
+
+
+def _step_detail(action: WorkflowAction, agent_id: str) -> str:
+    skill = action.skill or action.id
+    label = _STEP_LABELS.get(skill, skill.replace("_", " "))
+    if skill == "draft_recommendation":
+        profile = resolve_profile(agent_id, "agent")
+        model_short = profile.model.rsplit("/", 1)[-1]
+        return f"{label} ({model_short})…"
+    return f"{label}…"
 
 
 def _run_single_action(
@@ -88,6 +108,7 @@ def run_agent_workflow(
     selection_rationale: str,
     depth: int = 0,
     child_runner: ChildRunner | None = None,
+    on_step: SpecialistStepCallback | None = None,
 ) -> SpecialistOutput:
     t0 = time.perf_counter()
     wf = resolve_workflow(config, workflow_id)
@@ -181,6 +202,8 @@ def run_agent_workflow(
             continue
 
         if action.type in ("tool", "llm"):
+            if on_step:
+                on_step(_step_detail(action, agent_id))
             aid, text = _run_single_action(
                 action,
                 agent_id=agent_id,
