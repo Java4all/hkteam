@@ -1,0 +1,2 @@
+Ransomware attack on hospital EMR and scheduling systems. Clinical workflows degraded; some departments on downtime procedures. Possible data exfiltration—unconfirmed.
+City General Hospital IT center, Wing C

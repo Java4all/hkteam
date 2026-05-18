@@ -1,0 +1,59 @@
+# Demo incident inputs for Chainlit UI and manual testing.
+# Paste format: description lines, then final line = location (see README.md).
+
+examples:
+  - id: utilities_water_main
+    label: "Water main burst"
+    description: |
+      Major water main rupture on a 24-inch transmission line. Water flooding Oak Street,
+      low pressure reported in sectors 6–8. Two lanes closed; hospital supply line at risk.
+    location: "Oak Street, Sector 7 (near City General Hospital)"
+
+  - id: flood_and_utilities
+    label: "Flood + pipe burst"
+    description: |
+      Heavy rainfall caused river overflow. Combined with a water pipe burst near City General
+      Hospital. Roads flooded, ambulance access limited, shelter may be needed.
+    location: "Sector 7 riverside, Memorial Bridge approach"
+
+  - id: cyber_hospital
+    label: "Hospital ransomware"
+    description: |
+      Ransomware attack on hospital EMR and scheduling systems. Clinical workflows degraded;
+      some departments on downtime procedures. Possible data exfiltration—unconfirmed.
+    location: "City General Hospital IT center, Wing C"
+
+  - id: flood_critical
+    label: "Critical city-wide flood"
+    description: |
+      CRITICAL: City-wide flood warning. Multiple districts inundated. Evacuation orders
+      for low-lying areas. Power substation at risk. Emergency operations center activating.
+    location: "Downtown river district, Zones A–D"
+
+  - id: infrastructure_bridge
+    label: "Bridge structural damage"
+    description: |
+      Report of concrete spalling and exposed rebar on the eastbound deck. Traffic stopped;
+      engineer inspection requested. Detour signs needed for commuter corridor.
+    location: "Memorial Bridge, eastbound deck, km 4.2"
+
+  - id: public_safety_crowd
+    label: "Large public gathering"
+    description: |
+      Unplanned large crowd forming near city hall after announcement. Estimated 3,000 people;
+      need crowd management, medical standby, and traffic control on Main Plaza.
+    location: "Main Plaza, City Hall steps"
+
+  - id: utilities_power_substation
+    label: "Substation outage"
+    description: |
+      Transformer fire at substation. Partial grid outage affecting hospitals and traffic signals
+      in sectors 4–5. Utility crews en route; ETA 45 minutes for isolation.
+    location: "Substation 12, Industrial Park Road"
+
+  - id: cyber_municipal
+    label: "City cyber incident"
+    description: |
+      Phishing-led credential compromise. Unauthorized access attempts on payroll and 311 systems.
+      SOC isolated affected VLANs; citizen-facing portals on contingency mode.
+    location: "City Hall data center, Room B12"

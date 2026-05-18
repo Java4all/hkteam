@@ -3,11 +3,54 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import chainlit as cl
 import httpx
+import yaml
 
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
+_EXAMPLES_YAML = Path(__file__).resolve().parents[3] / "data" / "examples" / "incidents.yaml"
+
+
+def _format_incident_message(description: str, location: str) -> str:
+    desc = description.strip()
+    loc = location.strip()
+    return f"{desc}\n{loc}" if loc else desc
+
+
+def _load_example_incidents() -> list[dict]:
+    if not _EXAMPLES_YAML.is_file():
+        return []
+    data = yaml.safe_load(_EXAMPLES_YAML.read_text(encoding="utf-8")) or {}
+    return list(data.get("examples") or [])
+
+
+@cl.set_starters
+async def set_starters():
+    starters = []
+    for ex in _load_example_incidents():
+        desc = (ex.get("description") or "").strip()
+        loc = (ex.get("location") or "").strip()
+        if not desc:
+            continue
+        starters.append(
+            cl.Starter(
+                label=ex.get("label") or ex.get("id", "Incident"),
+                message=_format_incident_message(desc, loc),
+            )
+        )
+    if starters:
+        return starters
+    return [
+        cl.Starter(
+            label="Water main burst",
+            message=_format_incident_message(
+                "Major water main rupture. Water flooding Oak Street, low pressure in sectors 6–8.",
+                "Oak Street, Sector 7",
+            ),
+        ),
+    ]
 
 
 @cl.on_chat_start
@@ -15,8 +58,11 @@ async def start():
     await cl.Message(
         content=(
             "**Smart City Crisis Management** (v1.0)\n\n"
-            "Describe an incident (what happened + location). Example:\n"
-            "> Water main burst on Oak Street near City General Hospital. Flooding in road."
+            "Click a **starter** below, or paste an incident from `data/examples/*.txt` "
+            "(last line = location).\n\n"
+            "Example:\n"
+            "> Major water main rupture. Flooding on Oak Street.\n"
+            "> Oak Street, Sector 7"
         )
     ).send()
 

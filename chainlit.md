@@ -1,7 +1,10 @@
 # Smart City Crisis Management
 
-Describe an incident: **what happened** and **where** (location).
+Click a **starter** below or paste from `data/examples/` (see `data/examples/README.md`).
 
-Example:
+**Format:** description on one or more lines, **location on the last line**.
 
-> Water main burst on Oak Street near City General Hospital. Flooding in the road.
+Example (`01-utilities-water-main.txt`):
+
+> Major water main rupture. Water flooding Oak Street.
+> Oak Street, Sector 7 (near City General Hospital)

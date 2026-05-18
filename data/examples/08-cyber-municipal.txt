@@ -1,0 +1,2 @@
+Phishing-led credential compromise. Unauthorized access attempts on payroll and 311 systems. SOC isolated affected VLANs; citizen-facing portals on contingency mode.
+City Hall data center, Room B12
