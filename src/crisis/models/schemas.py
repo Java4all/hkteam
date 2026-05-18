@@ -116,6 +116,7 @@ class HumanDecision(BaseModel):
     approved_recommendation_ids: list[str] = Field(default_factory=list)
     rejected_recommendation_ids: list[str] = Field(default_factory=list)
     rejection_reason: str | None = None
+    modified_recommendations: dict[str, str] = Field(default_factory=dict)
     modified_drafts: dict[str, str] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=_utcnow)
 

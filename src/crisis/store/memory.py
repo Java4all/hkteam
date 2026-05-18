@@ -3,8 +3,8 @@ from __future__ import annotations
 from threading import Lock
 from typing import Any
 
-from crisis.models.enums import IncidentStatus
-from crisis.models.schemas import HumanDecision, Incident, IncidentSummary
+from crisis.models.schemas import HumanDecision
+from crisis.store.human_decision import apply_human_decision
 
 
 class MemoryIncidentStore:
@@ -34,12 +34,7 @@ class MemoryIncidentStore:
             row = self._incidents.get(incident_id)
             if not row:
                 return False
-            row["human_decision"] = decision
-            inc: Incident = row["incident"]
-            if decision.rejected_recommendation_ids and not decision.approved_recommendation_ids:
-                inc.status = IncidentStatus.REJECTED
-            else:
-                inc.status = IncidentStatus.APPROVED
+            apply_human_decision(row, decision)
             return True
 
     def list_ids(self) -> list[str]:

@@ -30,6 +30,7 @@ class HumanDecisionRequest(BaseModel):
     approved_recommendation_ids: list[str] = Field(default_factory=list)
     rejected_recommendation_ids: list[str] = Field(default_factory=list)
     rejection_reason: str | None = None
+    modified_recommendations: dict[str, str] = Field(default_factory=dict)
 
 
 @app.get("/health")
@@ -104,16 +105,49 @@ def get_incident(incident_id: str):
 
 @app.post("/incidents/{incident_id}/decision")
 def post_decision(incident_id: str, body: HumanDecisionRequest):
+    row = get_incident_store().get(incident_id)
+    if not row:
+        raise HTTPException(404, detail="Incident not found")
+    summary = row.get("incident_summary")
+    known = (
+        {r.id for r in summary.ranked_recommendations} if summary else set()
+    )
+    unknown = (
+        set(body.approved_recommendation_ids)
+        | {x for x in body.rejected_recommendation_ids if x != "*"}
+        | set(body.modified_recommendations)
+    ) - known
+    if unknown and known:
+        raise HTTPException(
+            400,
+            detail={"unknown_recommendation_ids": sorted(unknown)},
+        )
+
     decision = HumanDecision(
         operator_id=body.operator_id,
         approved_recommendation_ids=body.approved_recommendation_ids,
         rejected_recommendation_ids=body.rejected_recommendation_ids,
         rejection_reason=body.rejection_reason,
+        modified_recommendations=body.modified_recommendations,
     )
     if not get_incident_store().record_human_decision(incident_id, decision):
         raise HTTPException(404, detail="Incident not found")
+    row = get_incident_store().get(incident_id)
+    inc = row["incident"]
     dispatch_note = "SIMULATION: no external dispatch." if settings.simulation_mode else "Dispatch queued."
-    return {"incident_id": incident_id, "decision": decision.model_dump(mode="json"), "dispatch": dispatch_note}
+    return {
+        "incident_id": incident_id,
+        "status": inc.status.value,
+        "decision": decision.model_dump(mode="json"),
+        "dispatch": dispatch_note,
+        "summary": {
+            "approved_count": len(decision.approved_recommendation_ids),
+            "rejected_count": len(
+                [x for x in decision.rejected_recommendation_ids if x != "*"]
+            ),
+            "modified_count": len(decision.modified_recommendations),
+        },
+    }
 
 
 def run():

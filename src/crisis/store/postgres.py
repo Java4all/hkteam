@@ -113,15 +113,12 @@ class PostgresIncidentStore:
         return self._deserialize_row(row["payload"])
 
     def record_human_decision(self, incident_id: str, decision: HumanDecision) -> bool:
+        from crisis.store.human_decision import apply_human_decision
+
         row = self.get(incident_id)
         if not row:
             return False
-        row["human_decision"] = decision
-        inc: Incident = row["incident"]
-        if decision.rejected_recommendation_ids and not decision.approved_recommendation_ids:
-            inc.status = IncidentStatus.REJECTED
-        else:
-            inc.status = IncidentStatus.APPROVED
+        apply_human_decision(row, decision)
         payload = self._serialize_state(row)
         with self._connect() as conn:
             conn.execute(
