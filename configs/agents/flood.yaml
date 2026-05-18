@@ -5,12 +5,12 @@ agent_id: flood
 role: flood_coordinator
 display_name: Flood Response Specialist
 
-llm:
-  provider: nim
-  base_url: ${NIM_BASE_URL:-http://127.0.0.1:8000/v1}
-  model: meta/llama-3.1-8b-instruct
-  temperature: 0.2
-  max_tokens: 2048
+# LLM: use global profile from configs/llm/multimodel.yaml (assignments.agents.flood)
+# Or override:
+# llm:
+#   profile: cloud_llama_8b
+#   # profile: cloud_mistral_7b
+#   # model: meta/llama-3.1-70b-instruct   # inline override (same cloud base_url)
 
 workflow_selection:
   mode: hybrid

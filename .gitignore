@@ -1,0 +1,94 @@
+# --- Secrets & local env (keep .env.example) ---
+.env
+.env.*
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+pip-wheel-metadata/
+
+# --- Virtual environments ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Testing & coverage ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# --- Type checkers / linters ---
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# --- Chainlit ---
+.chainlit/
+.files/
+
+# --- Logs & runtime ---
+*.log
+logs/
+.pids/
+*.pid
+*.seed
+*.pid.lock
+
+# --- IDE / editor ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Docker / local data (optional services) ---
+docker-compose.override.yml
+*.local.yml
+
+# --- Langfuse / DB dumps (if run locally) ---
+langfuse_db/
+postgres_data/
+
+# --- Misc ---
+*.bak
+*.tmp
+.cache/

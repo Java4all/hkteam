@@ -1,0 +1,19 @@
+# Presentation scenarios for Smart City Crisis Management v1.0
+# Run: CRISIS_USE_MOCK_LLM=true python -m crisis.scripts.run_demo
+
+scenarios:
+  - id: utilities_water_main
+    description: "Major water main rupture. Water flooding Oak Street."
+    location: "Oak Street, Sector 7"
+    expect_categories: [UTILITIES]
+    expect_agents: [utilities]
+
+  - id: flood_and_utilities
+    description: "River overflow and water pipe burst near City General Hospital."
+    location: "Sector 7, riverside"
+    expect_agents_min: 2
+
+  - id: cyber_hospital
+    description: "Ransomware attack on hospital EMR systems."
+    location: "City General Hospital"
+    expect_categories: [CYBER]

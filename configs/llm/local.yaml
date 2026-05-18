@@ -1,0 +1,45 @@
+# v1.0 development / presentation: all agents on local NIM (no cloud required).
+# Production may use configs/llm/multimodel.yaml with cloud profiles.
+#
+# Env:
+#   NIM_LOCAL_BASE_URL=http://127.0.0.1:8000/v1
+#   NVIDIA_API_KEY=x
+#   LLM_PROFILE=local
+#   CRISIS_USE_MOCK_LLM=true   # optional: no NIM needed for demo tests
+
+profiles:
+  local_llama_8b:
+    provider: nim
+    base_url: ${NIM_LOCAL_BASE_URL}
+    model: meta/llama-3.1-8b-instruct
+    temperature: 0.2
+    max_tokens: 2048
+    tags: { llm_provider: local }
+
+  local_llama_70b:
+    provider: nim
+    base_url: ${NIM_LOCAL_BASE_URL}
+    model: meta/llama-3.1-70b-instruct
+    temperature: 0.2
+    max_tokens: 4096
+    tags: { llm_provider: local }
+
+assignments:
+  classifier: local_llama_8b
+  smart_router_llm: local_llama_8b
+  aggregator: local_llama_8b
+  incident_critic: local_llama_8b
+  workflow_selector_default: local_llama_8b
+
+  agents:
+    flood: local_llama_8b
+    cyber: local_llama_8b
+    infrastructure: local_llama_8b
+    utilities: local_llama_8b
+    public_services: local_llama_8b
+    public_safety: local_llama_8b
+    comms: local_llama_8b
+    general: local_llama_8b
+
+embeddings:
+  provider: none

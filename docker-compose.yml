@@ -1,0 +1,15 @@
+# Optional services for v1.0 — API runs on host via: pip install -e . && crisis-api
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: crisis
+      POSTGRES_PASSWORD: crisis
+      POSTGRES_DB: crisis
+    ports:
+      - "5432:5432"
+    volumes:
+      - crisis_pg:/var/lib/postgresql/data
+
+volumes:
+  crisis_pg:

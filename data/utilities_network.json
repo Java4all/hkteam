@@ -1,0 +1,6 @@
+{
+  "sector": "Oak Street",
+  "mains": ["WM-4421", "WM-4422"],
+  "critical_customers": ["City General Hospital", "Fire Station 7"],
+  "crew_status": {"available_crews": 2, "eta_hours": 1.5}
+}
