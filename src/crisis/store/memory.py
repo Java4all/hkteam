@@ -21,6 +21,7 @@ class MemoryIncidentStore:
                 "specialist_outputs": state.get("specialist_outputs"),
                 "incident_summary": state.get("incident_summary"),
                 "trace": state.get("trace", []),
+                "pipeline_stages": state.get("pipeline_stages", []),
                 "human_decision": state.get("human_decision"),
             }
 

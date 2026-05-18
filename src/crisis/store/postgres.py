@@ -52,6 +52,7 @@ class PostgresIncidentStore:
             "incident_summary": summary.model_dump(mode="json") if summary else None,
             "human_decision": human.model_dump(mode="json") if human else None,
             "trace": state.get("trace", []),
+            "pipeline_stages": state.get("pipeline_stages", []),
         }
 
     @staticmethod
@@ -83,6 +84,7 @@ class PostgresIncidentStore:
             "incident_summary": summary,
             "human_decision": human,
             "trace": payload.get("trace", []),
+            "pipeline_stages": payload.get("pipeline_stages", []),
         }
 
     def save_pipeline_result(self, state: dict[str, Any]) -> None:

@@ -108,13 +108,7 @@ def build_incident_graph():
 
 
 def run_incident_pipeline(report: IncidentReport) -> IncidentState:
-    graph = build_incident_graph()
-    init: IncidentState = {
-        "report": report,
-        "trace": ["start"],
-    }
-    config = get_langfuse_config(tags=["incident-pipeline"])
-    try:
-        return graph.invoke(init, config=config)
-    finally:
-        flush_langfuse_traces()
+    """Run pipeline with per-stage progress and specialist error isolation."""
+    from crisis.pipeline.runner import run_incident_pipeline as _run
+
+    return _run(report)

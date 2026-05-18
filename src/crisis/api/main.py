@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-
 from contextlib import asynccontextmanager
 
-from crisis.graph.incident_graph import run_incident_pipeline
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
+from crisis.pipeline.serialize import incident_response
+from crisis.pipeline.runner import run_incident_pipeline, stream_incident_pipeline
 from crisis.models.schemas import HumanDecision, IncidentReport
 from crisis.llm.nvidia_health import nvidia_health
 from crisis.observability.langfuse import langfuse_health
@@ -51,18 +53,32 @@ def create_incident(report: IncidentReport):
     if not report.location.strip():
         raise HTTPException(400, detail={"missing_fields": ["location"]})
     store = get_incident_store()
-    state = run_incident_pipeline(report)
+    try:
+        state = run_incident_pipeline(report)
+    except Exception as exc:
+        raise HTTPException(
+            503,
+            detail={
+                "message": str(exc),
+                "stage": "pipeline",
+                "hint": "Check NVIDIA_API_KEY, API logs, or set CRISIS_USE_MOCK_LLM=true.",
+            },
+        ) from exc
     store.save_pipeline_result(state)
-    inc = state["incident"]
-    return {
-        "incident_id": inc.incident_id,
-        "status": inc.status.value,
-        "categories": [c.value for c in inc.categories],
-        "severity": inc.severity.value,
-        "routing": state["routing_decision"].model_dump(),
-        "summary": state["incident_summary"].model_dump(),
-        "trace": state.get("trace", []),
-    }
+    return incident_response(state)
+
+
+@app.post("/incidents/stream")
+def create_incident_stream(report: IncidentReport):
+    if not report.description.strip():
+        raise HTTPException(400, detail={"missing_fields": ["description"]})
+    if not report.location.strip():
+        raise HTTPException(400, detail={"missing_fields": ["location"]})
+    return StreamingResponse(
+        stream_incident_pipeline(report),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.get("/incidents/{incident_id}")
@@ -82,6 +98,7 @@ def get_incident(incident_id: str):
         "incident_summary": row["incident_summary"].model_dump() if row.get("incident_summary") else None,
         "human_decision": row["human_decision"].model_dump() if row.get("human_decision") else None,
         "trace": row.get("trace", []),
+        "pipeline_stages": row.get("pipeline_stages", []),
     }
 
 

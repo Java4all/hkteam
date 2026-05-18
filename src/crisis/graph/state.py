@@ -20,4 +20,5 @@ class IncidentState(TypedDict, total=False):
     incident_summary: IncidentSummary
     human_decision: HumanDecision
     trace: list[str]
+    pipeline_stages: list[dict[str, Any]]
     error: str
