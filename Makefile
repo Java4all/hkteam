@@ -71,8 +71,12 @@ endif
 build: ## Build Docker images
 	$(COMPOSE) build
 
-chainlit-init: ## Regenerate .chainlit/config.toml (fixes project/settings 500)
+chainlit-init: ## Regenerate .chainlit/config.toml on host (needs: make install)
 	$(PYTHON_CMD) -m chainlit init
+
+bootstrap-chainlit: ## Create .chainlit on host via Docker if missing
+	chmod +x scripts/bootstrap-chainlit.sh
+	bash scripts/bootstrap-chainlit.sh
 
 start: ## Start full stack (Docker)
 	@test -f .env || (echo "Copy .env.example to .env first" && exit 1)

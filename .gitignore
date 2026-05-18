@@ -48,9 +48,11 @@ coverage.xml
 .ruff_cache/
 .pytype/
 
-# --- Chainlit ---
-.chainlit/.files/
-.files/
+# --- Chainlit (commit .chainlit/config.toml + translations/ — required for Docker UI) ---
+.chainlit/*
+!.chainlit/config.toml
+!.chainlit/translations/
+!.chainlit/translations/**
 
 # --- Logs & runtime ---
 *.log
