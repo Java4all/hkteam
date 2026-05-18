@@ -22,7 +22,7 @@ Python **3.11+** is required. Check:
 python3 --version
 ```
 
-`make prerequisites` installs **Python 3.12** automatically if the default `python3` is older than 3.11 (common on Ubuntu 22.04 with Python 3.10). It writes `.preferred-python` for `make install`.
+`make prerequisites` installs **Python 3.12 only when needed** (no 3.11+ on the host). If `python3.11` or `python3.12` is already present, it skips Python packages. It writes `.preferred-python` for `make install`.
 
 Manual install:
 

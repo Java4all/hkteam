@@ -17,9 +17,6 @@ BASE_APT_PACKAGES=(
   make
   curl
   git
-  python3
-  python3-venv
-  python3-pip
   ca-certificates
 )
 
@@ -47,17 +44,24 @@ find_preferred_python() {
   return 1
 }
 
-install_python312() {
-  echo "Installing Python 3.12 (sudo)..."
-  if sudo apt-get install -y python3.12 python3.12-venv python3.12-dev 2>/dev/null; then
+install_python_if_needed() {
+  if find_preferred_python >/dev/null 2>&1; then
+    local existing
+    existing="$(find_preferred_python)"
+    ok "Python already OK ($existing) — skipping install"
+    echo "$existing" > .preferred-python
+    return 0
+  fi
+  echo "No Python 3.11+ found — installing Python 3.12 (sudo)..."
+  if sudo apt-get install -y python3.12 python3.12-venv 2>/dev/null; then
     ok "python3.12 installed from apt"
     return 0
   fi
-  warn "python3.12 not in default apt - trying deadsnakes PPA..."
+  warn "python3.12 not in default apt — trying deadsnakes PPA..."
   sudo apt-get install -y software-properties-common
   sudo add-apt-repository -y ppa:deadsnakes/ppa
   sudo apt-get update
-  sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
+  sudo apt-get install -y python3.12 python3.12-venv
   ok "python3.12 installed from deadsnakes PPA"
 }
 
@@ -174,15 +178,13 @@ if [[ "$MODE" == "--install" ]]; then
   sudo apt-get update
   sudo apt-get install -y "${BASE_APT_PACKAGES[@]}"
 
-  if ! find_preferred_python >/dev/null 2>&1; then
-    install_python312
-  fi
+  install_python_if_needed
   PREFERRED_PY="$(find_preferred_python || true)"
   if [[ -n "$PREFERRED_PY" ]]; then
     echo "$PREFERRED_PY" > .preferred-python
-    ok "preferred Python: $PREFERRED_PY written to .preferred-python"
+    ok "host Python for make install/test: $PREFERRED_PY"
   else
-    fail "Python 3.11+ still not available after install attempt"
+    warn "Python 3.11+ not available — optional for Docker; needed for make install / make test"
   fi
 
   if command -v docker >/dev/null 2>&1; then

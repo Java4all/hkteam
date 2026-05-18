@@ -9,7 +9,7 @@ make prerequisites-check
 make prerequisites         # installs packages (sudo), creates .env
 ```
 
-On Ubuntu 22.04, default `python3` is often 3.10. `make prerequisites` installs **Python 3.12** for optional host `make install` / `make test`. The Docker stack does not require host Python 3.11+.
+On Ubuntu 22.04, default `python3` is often 3.10. `make prerequisites` installs **Python 3.12 only if** no 3.11+ is found (optional for host `make install` / `make test`). The Docker stack does not require host Python.
 
 ## Start / stop
 
