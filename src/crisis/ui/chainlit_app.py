@@ -245,7 +245,9 @@ async def on_message(message: cl.Message):
     agents = format_agent_list(routing.get("selected", []))
     narrative = summary.get("narrative", "")
     recs = summary.get("ranked_recommendations", [])
-    stage_table = format_pipeline_stages(stages or data.get("pipeline_stages", []))
+    pipeline_stages = stages or data.get("pipeline_stages", [])
+    complete = sum(1 for s in pipeline_stages if s.get("status") == "complete")
+    total = len(pipeline_stages)
 
     failed_agents = summary.get("agents_failed") or []
     failed_note = ""
@@ -261,8 +263,9 @@ async def on_message(message: cl.Message):
             f"**Severity:** {data.get('severity')} · "
             f"**Categories:** {', '.join(data.get('categories', []))}\n"
             f"**Specialists:** {agents}\n"
-            f"**Routing:** {routing.get('rationale', '')}{failed_note}\n\n"
-            f"### Pipeline summary\n{stage_table}\n\n"
+            f"**Routing:** {routing.get('rationale', '')}{failed_note}\n"
+            f"**Pipeline:** {complete}/{total} stages complete "
+            "(details in **Crisis Response Command Center** above).\n\n"
             f"### 📋 EOC Briefing\n{narrative}"
         ),
     ).send()
