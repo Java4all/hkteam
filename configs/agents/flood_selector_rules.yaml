@@ -1,0 +1,22 @@
+# Workflow selector rules for Flood agent (runs inside specialist subgraph)
+# Input: RouterHandoff (severity, routing_hints, prior_outputs, workflow_override)
+
+rules:
+  - if: workflow_override is not null
+    then: ${workflow_override}
+
+  - if: any(hints, [dam, levee, breach])
+    then: flood_dam_breach
+
+  - if: severity == CRITICAL
+    then: flood_critical
+
+  - if: severity in [LOW, MEDIUM]
+    then: flood_light
+
+default: flood_standard
+
+llm_fallback:
+  enabled: true
+  min_confidence: 0.6
+  allowed_workflows: [flood_light, flood_standard, flood_critical, flood_dam_breach]

@@ -1,0 +1,34 @@
+# Dependency and exclusion rules for Smart Router (Stage B)
+# Evaluated after category_map builds Candidate_Set.
+
+rules:
+  - name: cyber_hospital_impact
+    when:
+      categories_include: [CYBER]
+      hints_include: [hospital, medical, emr]
+    activate: [cyber, utilities, infrastructure]
+    mode: targeted
+
+  - name: utilities_water_main_only
+    when:
+      categories_exact: [UTILITIES]
+      hints_include: [water_main, pipe, burst]
+    activate: [utilities]
+    exclude: [cyber, flood, infrastructure]
+
+  - name: public_safety_mandatory
+    when:
+      categories_include: [PUBLIC_SAFETY]
+    activate: [public_safety, comms]
+    force_include: [public_safety]
+    constraints: [restricted_mode]
+
+  - name: flood_plus_utilities
+    when:
+      categories_include: [FLOOD, UTILITIES]
+    activate: [flood, utilities, comms]
+    mode: targeted
+
+# PUBLIC_SAFETY cannot be removed from Selected_Set by LLM router when in candidates.
+safety:
+  never_drop_when_in_candidates: [public_safety]

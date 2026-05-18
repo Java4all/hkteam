@@ -1,0 +1,24 @@
+# Category → candidate specialist agents (Stage A routing)
+# Smart Router (Stage B) selects a subset of these candidates.
+
+category_map:
+  FLOOD: [flood]
+  INFRASTRUCTURE: [infrastructure]
+  CYBER: [cyber]
+  PUBLIC_SAFETY: [public_safety]
+  PUBLIC_SERVICES: [public_services]
+  UTILITIES: [utilities]
+  OTHER: [general]
+
+# Agents added when severity matches (union with category candidates)
+always_for_severity:
+  CRITICAL: [comms]
+  HIGH: [comms]
+
+# Full activation: all candidates + comms when criteria met (see dependencies.yaml)
+smart_router:
+  max_parallel_agents: 4
+  full_activation_requires:
+    min_severity: CRITICAL
+    min_categories: 2
+    min_confidence: 0.7
