@@ -8,6 +8,7 @@
 
 | Document | Description |
 |----------|-------------|
+| [**Documentation index**](docs/README.md) | Full doc map (reviewed for workflow-only orchestration) |
 | [**Docker deployment**](docs/DOCKER.md) | **Start here** — compose stack, Langfuse keys, troubleshooting |
 | [Technical design v1.0](docs/TECHNICAL_DESIGN.md) | Architecture, models, security, requirements traceability |
 | [Specialist agents](docs/AGENTS.md) | Roles, YAML workflows, routing, code map |
@@ -90,6 +91,11 @@ All **eight** specialists run **YAML-defined workflows** (`configs/agents/{id}.y
 Smart Router picks up to **four** top-level specialists in parallel; each runs its own workflow pipeline.
 
 Full catalog and action types: [docs/AGENTS.md](docs/AGENTS.md).
+
+```env
+CRISIS_MAX_SUBAGENT_DEPTH=2          # nested child agents in workflows
+# CRISIS_AGENT_WORKFLOWS=flood:flood_critical   # optional overrides
+```
 
 ## Operator flow
 

@@ -56,7 +56,9 @@ LANGFUSE_SALT=...              # min 32 chars
 SIMULATION_MODE=true
 ```
 
-Agent and model reference: [AGENTS.md](AGENTS.md) · [TECHNICAL_DESIGN.md §8](TECHNICAL_DESIGN.md).
+Agent workflows: [AGENTS.md](AGENTS.md) · models: [TECHNICAL_DESIGN.md §8](TECHNICAL_DESIGN.md) · doc index: [README.md](README.md).
+
+After changing `configs/agents/*.yaml`: `make restart` (no hot-reload).
 
 ## Host tests (no Docker)
 

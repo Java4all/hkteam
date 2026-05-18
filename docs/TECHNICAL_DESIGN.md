@@ -12,6 +12,7 @@
 | **Stack** | LangGraph · NVIDIA cloud LLM · Langfuse v3 · Chainlit · Postgres |
 | **Inference** | Per-agent models on NVIDIA cloud (`LLM_PROFILE=multimodel`); optional local NIM on same host |
 | **Agents guide** | `docs/AGENTS.md` · diagrams: `docs/diagrams/` |
+| **Doc index** | `docs/README.md` (last reviewed 2026-05-18) |
 
 ---
 
@@ -35,6 +36,7 @@ It consolidates product requirements, architecture decisions from design reviews
 | **PostgreSQL** | **Mandatory** in Docker — incident persistence |
 | **Langfuse** | **Mandatory** in Docker — self-hosted **v3** (clickhouse, redis, minio, worker) |
 | YAML specialist workflows | **Required** — every agent has `configs/agents/{id}.yaml` (tools, LLM, parallel, subagent) |
+| Subagent orchestration | `subagent` workflow action; `CRISIS_MAX_SUBAGENT_DEPTH` (default 2) |
 | LLM | **`LLM_PROFILE=multimodel`** — NVIDIA cloud from `api` container |
 | Host pytest | `make test` — mock LLM, no Docker (dev/CI only) |
 | Local NIM | Optional on GPU host — `local_*` profiles in YAML (not in default compose) |
@@ -157,7 +159,7 @@ flowchart TB
 
 **Implementation:** FastAPI handler + Pydantic validation. No LLM on happy path.
 
-### 4.2 Classifier (hybrid node)
+### 4.2 Classifier (rules + LLM node)
 
 **Responsibility:** Assign categories, severity, confidence, routing hints.
 
@@ -273,7 +275,7 @@ Each agent defines:
 - **Role** — organizational function (`flood_coordinator`, `cyber_lead`, …)
 - **Skills** — registered capabilities (`weather_api`, `playbook_rag`, …)
 - **Workflows** — named action pipelines (`flood_standard`, `flood_dam_breach`, …)
-- **Actions** — steps: `tool`, `rule`, `llm`, `critic`, `parallel`, `nat_workflow`
+- **Actions** — steps: `tool`, `llm`, `parallel`, `subagent`, `rule`, `critic`, `nat_workflow` (see `docs/AGENTS.md`)
 
 Workflow selection:
 
@@ -469,26 +471,31 @@ class IncidentState(TypedDict, total=False):
 ### 6.2 Example agent config (excerpt)
 
 ```yaml
-# configs/agents/flood.yaml
+# configs/agents/flood.yaml (excerpt)
 agent_id: flood
-role: flood_coordinator
-
-llm:
-  provider: nim
-  base_url: ${NIM_BASE_URL}
-  model: meta/llama-3.1-8b-instruct
-
 workflow_selection:
   default: flood_standard
   rules_file: flood_selector_rules.yaml
-
 workflows:
   flood_standard:
     actions:
       - { id: kb, type: tool, skill: playbook_rag, params: { tags: [flood] } }
-      - { id: weather, type: tool, skill: weather_api }
-      - { id: analyze, type: llm, skill: draft_recommendation, output_schema: FloodAnalysisOutput }
+      - id: context
+        type: parallel
+        params:
+          steps:
+            - { id: weather, type: tool, skill: weather_api }
+            - { id: zone, type: tool, skill: flood_zone_gis }
+        depends_on: [kb]
+      - { id: analyze, type: llm, skill: draft_recommendation, input_from: [kb, context] }
       - { id: verify, type: critic, rules: [require_citations] }
+  flood_dam_breach:
+    inherits: flood_critical
+    actions:
+      - id: comms
+        type: subagent
+        params: { agent_id: comms, workflow: comms_standard }
+        depends_on: [analyze]
 ```
 
 ### 6.3 Skills registry
@@ -526,7 +533,7 @@ specialist_subgraph(agent_id):
   select_workflow → run_workflow → agent_checks → package_output
 ```
 
-Pre-compile subgraphs per `agent_id` at startup; workflow body loaded from YAML or embedded Python for MVP.
+Workflow bodies loaded from `configs/agents/*.yaml` at runtime (`workflow_engine.py`). Incident-level graph is implemented in `pipeline/runner.py` with parallel specialist fan-out.
 
 ### 7.3 Checkpointing
 
@@ -586,14 +593,14 @@ Profiles are reusable client settings (`base_url`, `model`, temperature, `max_to
 | Workflow selector (default) | `cloud_nemotron_mini` | same | `select_workflow()` per agent |
 | **Aggregator** | `cloud_llama_70b` | `meta/llama-3.3-70b-instruct` | `node_aggregate` — incident summary |
 | Incident critic | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Critic / verification steps |
-| Specialist **flood** | `cloud_nemotron_nano_8b` | same | `run_specialist` → `node_run_specialists` |
+| Specialist **flood** | `cloud_nemotron_nano_8b` | same | `run_specialist` → `workflow_engine` |
 | Specialist **utilities** | `cloud_nemotron_nano_8b` | same | Example 02 (flood + utilities) |
-| Specialist **infrastructure** | `cloud_nemotron_nano_8b` | same | |
-| Specialist **public_safety** | `cloud_nemotron_nano_8b` | same | |
-| Specialist **general** | `cloud_nemotron_nano_8b` | same | |
-| Specialist **cyber** | `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | |
-| Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | Legacy path |
-| Specialist **comms** | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Added for HIGH/CRITICAL via smart routing |
+| Specialist **infrastructure** | `cloud_nemotron_nano_8b` | same | `configs/agents/infrastructure.yaml` |
+| Specialist **public_safety** | `cloud_nemotron_nano_8b` | same | `configs/agents/public_safety.yaml` |
+| Specialist **general** | `cloud_nemotron_nano_8b` | same | `configs/agents/general.yaml` |
+| Specialist **cyber** | `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | `configs/agents/cyber.yaml` |
+| Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | `configs/agents/public_services.yaml` |
+| Specialist **comms** | `cloud_nemotron_nano_8b` | same | Router adds for HIGH/CRITICAL; subagent from flood |
 
 **Example 02** (flood + utilities) invokes at minimum: **nemotron-mini** (classify/route), **nemotron-nano-8b** (flood + utilities specialists), **llama-3.3-70b** (aggregate).
 
@@ -918,12 +925,14 @@ hkteam/
 
 ## 14. Implementation phases
 
-| Phase | Deliverable | Requirements |
-|-------|-------------|--------------|
-| **P0 — Spine** | Intake API, classify, smart route (rules only), 1 specialist (`utilities`), aggregate, **Chainlit** HITL (approve/reject) | 1, 2, 3, 8, 10, 11 |
-| **P1 — Multi-agent** | 3 specialists, parallel fan-out, workflow selector, critic, **Langfuse** wired, partial failure | 3–6, 13, 15 |
-| **P2 — Full domain** | All specialists, PUBLIC_SAFETY restricted, escalation, checkpointer, comms agent, **mid-workflow switch** (optional) | 7, 9, 14 |
-| **P3 — Production** | NAT tools, real adapters, 90-day audit, eval CI, multi-NIM; config changes via **restart** | 12, 13 |
+| Phase | Deliverable | v1.0 status |
+|-------|-------------|-------------|
+| **P0 — Spine** | Intake, classify, route, aggregate, Chainlit HITL | **Done** |
+| **P1 — Multi-agent** | 8 specialists, parallel fan-out, YAML workflows, Langfuse v3, SSE pipeline UI | **Done** |
+| **P2 — Full domain** | Escalation depth, checkpointer resume, mid-workflow switch, live tool APIs | Partial / deferred |
+| **P3 — Production** | NAT `nat_workflow` execution, real dispatch adapters, eval CI, multi-NIM | Planned |
+
+**v1.0 demo focus:** workflow-per-agent orchestration (`docs/AGENTS.md`), GPU instance Docker deploy, NVIDIA cloud multimodel.
 
 ---
 
@@ -953,6 +962,7 @@ hkteam/
 | **O3** | Mid-workflow switch | **Defer to P2** | Specialist may change `workflow_id` mid-run after new evidence (max one switch) |
 | **O4** | Agent_Config reload | **Restart** | YAML/config changes require process restart; no hot-reload in v1–P3 |
 | **O5** | Inference topology | **Per-agent cloud models + optional local 8B** | Same cloud URL; different `model_name` per agent; selected agents on local NIM |
+| **O6** | Specialist execution | **YAML workflow only** | No legacy/hybrid modes; `subagent` + `parallel` actions; see `docs/AGENTS.md` |
 
 **O1 env (typical):** `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` (e.g. `http://localhost:3000`).
 
@@ -976,6 +986,8 @@ hkteam/
 | **Workflow Selector** | Chooses workflow_id inside specialist |
 | **Skill** | Registered tool capability |
 | **Deferred agent** | Candidate not run in pass 1; may activate on escalation |
+| **Subagent** | Child specialist invoked inside a parent agent workflow (`type: subagent`) |
+| **Parallel action** | Concurrent workflow steps within one agent (`type: parallel`) |
 
 ---
 
