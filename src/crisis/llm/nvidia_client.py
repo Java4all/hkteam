@@ -37,9 +37,11 @@ def build_chat_model(
 
     base = normalize_cloud_base_url(base_url)
     if is_hosted_nim_url(base):
-        from langchain_openai import ChatOpenAI
+        # BaseChatOpenAI (not ChatOpenAI): integrate.api.nvidia.com requires max_tokens,
+        # not max_completion_tokens which ChatOpenAI adds in newer langchain-openai.
+        from langchain_openai.chat_models.base import BaseChatOpenAI
 
-        return ChatOpenAI(
+        return BaseChatOpenAI(
             model=model,
             api_key=api_key,
             base_url=base,

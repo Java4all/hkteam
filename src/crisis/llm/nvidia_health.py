@@ -17,7 +17,7 @@ def nvidia_health() -> dict:
         "profile": settings.llm_profile,
         "base_url": settings.nim_cloud_base_url or HOSTED_CLOUD_BASE,
         "packages": package_versions(),
-        "client": "langchain_openai.ChatOpenAI (hosted) / ChatNVIDIA (local NIM)",
+        "client": "langchain_openai.BaseChatOpenAI (hosted) / ChatNVIDIA (local NIM)",
     }
     if settings.crisis_use_mock_llm:
         out["ok"] = True
@@ -58,4 +58,6 @@ def nvidia_health() -> dict:
                 "404 — check NIM_CLOUD_BASE_URL=https://integrate.api.nvidia.com/v1 in .env; "
                 "rebuild api: docker compose --env-file .env build --no-cache api"
             )
+        elif "max_completion_tokens" in str(exc) or "extra_forbidden" in str(exc):
+            out["hint"] = "LangChain sent max_completion_tokens — rebuild api image (needs BaseChatOpenAI fix)"
     return out
