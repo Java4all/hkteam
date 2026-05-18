@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from crisis.graph.incident_graph import run_incident_pipeline
 from crisis.models.schemas import HumanDecision, IncidentReport
+from crisis.llm.nvidia_health import nvidia_health
 from crisis.observability.langfuse import langfuse_health
 from crisis.settings import settings
 from crisis.store import get_incident_store
@@ -39,6 +40,7 @@ def health():
         "simulation_mode": settings.simulation_mode,
         "database": bool(settings.database_url),
         "langfuse": langfuse_health(),
+        "nvidia": nvidia_health(),
     }
 
 

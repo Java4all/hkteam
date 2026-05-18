@@ -101,7 +101,13 @@ def run_specialist(agent_id: str, handoff: RouterHandoff) -> SpecialistOutput:
             f"Context:\n{blob}"
         )
     )
-    resp = llm.invoke([sys, human])
+    try:
+        resp = llm.invoke([sys, human])
+    except Exception as exc:
+        raise RuntimeError(
+            f"NVIDIA LLM failed for agent {agent_id!r} (model={profile.model}): {exc}. "
+            "Check NVIDIA_API_KEY in .env, run make verify-nvidia-api, or set CRISIS_USE_MOCK_LLM=true."
+        ) from exc
     text = getattr(resp, "content", str(resp))
 
     out = _parse_llm_output(agent_id, workflow_id, text, evidence_raw)

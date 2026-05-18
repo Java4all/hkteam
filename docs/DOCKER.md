@@ -127,6 +127,7 @@ Production demo for others: **`make start`** only.
 |-------|-----|
 | `langfuse` unhealthy but curl `/api/public/health` OK | False alarm from old wget healthcheck — `git pull` and `docker compose up -d --force-recreate langfuse` |
 | Langfuse crash `Region is missing` / S3 upload failed | Set `LANGFUSE_S3_EVENT_UPLOAD_REGION=auto` and `LANGFUSE_S3_MEDIA_UPLOAD_REGION=auto` (in compose); recreate `minio` + `langfuse` |
+| API error `[404] Not Found` on `integrate.api.nvidia.com` | Set valid `NVIDIA_API_KEY` in `.env`; enable models on [build.nvidia.com](https://build.nvidia.com/); `make verify-nvidia-api`; or `CRISIS_USE_MOCK_LLM=true` |
 | API cannot reach postgres | `DATABASE_URL` must use host `postgres` inside Docker |
 | Chainlit cannot reach API | `API_BASE_URL=http://api:8080` in compose |
 | No traces in Langfuse | Set `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` after project setup |

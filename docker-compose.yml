@@ -169,6 +169,10 @@ services:
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       LANGFUSE_DEBUG: ${LANGFUSE_DEBUG:-false}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      NIM_CLOUD_BASE_URL: ${NIM_CLOUD_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      LLM_PROFILE: ${LLM_PROFILE:-multimodel}
+      CRISIS_USE_MOCK_LLM: ${CRISIS_USE_MOCK_LLM:-false}
     volumes:
       - ./configs:/app/configs:ro
       - ./data:/app/data:ro

@@ -1,6 +1,5 @@
 # Default LLM profile (v1.0): per-agent models on NVIDIA cloud.
 # Optional: assign any agent to local_* profiles if local NIM is running.
-# Same cloud base_url for all cloud profiles; each agent uses its own model_name.
 #
 # Env:
 #   NVIDIA_API_KEY=nvapi-...
@@ -8,25 +7,49 @@
 #   NIM_LOCAL_BASE_URL=http://127.0.0.1:8000/v1
 #   LLM_PROFILE=multimodel
 #
-# Model IDs must be enabled on your NVIDIA API account.
+# Enable each model on https://build.nvidia.com/ (open page → Get API Key / try model).
+# Chat models used by this profile:
+#   nvidia/nemotron-mini-4b-instruct
+#   nvidia/llama-3.1-nemotron-nano-8b-v1
+#   meta/llama-3.3-70b-instruct
+#   mistralai/mistral-7b-instruct-v0.3
+#   microsoft/phi-4-mini-instruct
+# Embeddings: disabled (provider: none) until RAG is implemented.
+# Smoke test: make verify-nvidia-api
 
 profiles:
   # --- Cloud (integrate.api.nvidia.com) — one endpoint, many models ---
-  cloud_llama_8b:
+  cloud_nemotron_mini:
     provider: nim
     base_url: ${NIM_CLOUD_BASE_URL}
-    model: meta/llama-3.1-8b-instruct
+    model: nvidia/nemotron-mini-4b-instruct
+    temperature: 0.1
+    max_tokens: 1024
+    tags: { llm_provider: cloud, model_family: nemotron }
+
+  cloud_nemotron_nano_8b:
+    provider: nim
+    base_url: ${NIM_CLOUD_BASE_URL}
+    model: nvidia/llama-3.1-nemotron-nano-8b-v1
     temperature: 0.2
     max_tokens: 2048
-    tags: { llm_provider: cloud, model_family: llama }
+    tags: { llm_provider: cloud, model_family: nemotron }
 
   cloud_llama_70b:
     provider: nim
     base_url: ${NIM_CLOUD_BASE_URL}
-    model: meta/llama-3.1-70b-instruct
+    model: meta/llama-3.3-70b-instruct
     temperature: 0.2
     max_tokens: 4096
     tags: { llm_provider: cloud, model_family: llama }
+
+  cloud_nemotron_super:
+    provider: nim
+    base_url: ${NIM_CLOUD_BASE_URL}
+    model: nvidia/llama-3.3-nemotron-super-49b-v1.5
+    temperature: 0.2
+    max_tokens: 4096
+    tags: { llm_provider: cloud, model_family: nemotron }
 
   cloud_mistral_7b:
     provider: nim
@@ -36,18 +59,11 @@ profiles:
     max_tokens: 2048
     tags: { llm_provider: cloud, model_family: mistral }
 
-  cloud_nemotron_mini:
-    provider: nim
-    base_url: ${NIM_CLOUD_BASE_URL}
-    model: nvidia/nemotron-mini-4b-instruct
-    temperature: 0.1
-    max_tokens: 1024
-    tags: { llm_provider: cloud, model_family: nemotron }
-
   cloud_phi_mini:
     provider: nim
     base_url: ${NIM_CLOUD_BASE_URL}
-    model: microsoft/phi-3-mini-128k-instruct
+    # Phi-3 not on current build.nvidia.com catalog — use Phi-4 mini
+    model: microsoft/phi-4-mini-instruct
     temperature: 0.2
     max_tokens: 2048
     tags: { llm_provider: cloud, model_family: phi }
@@ -65,20 +81,22 @@ assignments:
   classifier: cloud_nemotron_mini
   smart_router_llm: cloud_nemotron_mini
   aggregator: cloud_llama_70b
-  incident_critic: cloud_llama_8b
+  incident_critic: cloud_nemotron_nano_8b
   workflow_selector_default: cloud_nemotron_mini
 
   agents:
-    flood: cloud_llama_8b
+    flood: cloud_nemotron_nano_8b
     cyber: cloud_mistral_7b
-    infrastructure: cloud_llama_8b
+    infrastructure: cloud_nemotron_nano_8b
     public_services: cloud_phi_mini
-    public_safety: cloud_llama_8b
+    public_safety: cloud_nemotron_nano_8b
     comms: cloud_phi_mini
-    general: cloud_llama_8b
-    utilities: cloud_llama_8b
+    general: cloud_nemotron_nano_8b
+    utilities: cloud_nemotron_nano_8b
 
+# RAG/embeddings not wired in v1.0 pipeline — set provider: none to skip.
+# When enabled, use a model on build.nvidia.com (e.g. nvidia/nv-embed-v1).
 embeddings:
-  provider: nim
+  provider: none
   base_url: ${NIM_CLOUD_BASE_URL}
-  model: nvidia/nv-embedqa-e5-v5
+  model: nvidia/nv-embed-v1

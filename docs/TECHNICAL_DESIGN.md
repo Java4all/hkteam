@@ -555,10 +555,10 @@ The application runs on an **NVIDIA GPU instance** (P1+) for LangGraph, Chainlit
 | Classifier, router LLM, workflow selector | `nvidia/nemotron-mini-4b-instruct` | Fast, low cost |
 | Flood, infrastructure, public_safety | `meta/llama-3.1-8b-instruct` | General specialist |
 | Cyber | `mistralai/mistral-7b-instruct-v0.3` | Domain-tuned model choice |
-| Public services, comms | `microsoft/phi-3-mini-128k-instruct` | Shorter drafts |
+| Public services, comms | `microsoft/phi-4-mini-instruct` | Shorter drafts |
 | **Aggregator** | `meta/llama-3.1-70b-instruct` | Highest quality merge |
 | Incident critic | `meta/llama-3.1-8b-instruct` | Consistent verification |
-| Embeddings (RAG) | `nvidia/nv-embedqa-e5-v5` | Not an LLM agent |
+| Embeddings (RAG, future) | `nvidia/nv-embed-v1` | Not wired in v1.0; optional on build.nvidia.com |
 
 **Local — optional second endpoint:**
 

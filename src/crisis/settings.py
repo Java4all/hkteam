@@ -32,9 +32,9 @@ class Settings(BaseSettings):
     langfuse_host: str = "http://localhost:3000"
     langfuse_base_url: str = ""
 
-    @field_validator("langfuse_public_key", "langfuse_secret_key", mode="before")
+    @field_validator("langfuse_public_key", "langfuse_secret_key", "nvidia_api_key", mode="before")
     @classmethod
-    def _strip_langfuse_keys(cls, value: object) -> object:
+    def _strip_secrets(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip()
         return value
