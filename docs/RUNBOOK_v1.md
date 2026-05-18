@@ -51,3 +51,28 @@ make test
 ```bash
 ssh -L 8080:127.0.0.1:8080 -L 7860:127.0.0.1:7860 -L 3000:127.0.0.1:3000 user@gpu-host
 ```
+
+Or with Brev (from your laptop):
+
+```bash
+brev port-forward <instance> --port 7860:7860 --port 8080:8080 --port 3000:3000
+```
+
+## `containerd.io` / `docker.io` conflict (Brev / Docker CE)
+
+If `make prerequisites` fails with `containerd.io Conflicts: containerd`, Docker is **already installed** (common on Brev). Skip reinstall:
+
+```bash
+docker --version
+docker compose version
+make prerequisites-check
+```
+
+If checks pass, only run:
+
+```bash
+cp .env.example .env
+make start
+```
+
+Re-run `make prerequisites` after updating the repo — it no longer installs `docker.io` when Docker is present.

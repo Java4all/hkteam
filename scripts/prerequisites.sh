@@ -12,9 +12,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 MODE="${1:---check}"
-INSTALL_APT_PACKAGES=(
-  docker.io
-  docker-compose-plugin
+# Base packages (never include docker.io here — conflicts with Docker CE / containerd.io on Brev)
+BASE_APT_PACKAGES=(
   make
   curl
   git
@@ -23,6 +22,14 @@ INSTALL_APT_PACKAGES=(
   python3-pip
   ca-certificates
 )
+
+docker_ce_installed() {
+  dpkg -l containerd.io docker-ce docker-ce-cli 2>/dev/null | grep -q '^ii'
+}
+
+compose_available() {
+  docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1
+}
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -119,9 +126,26 @@ if [[ "$MODE" == "--install" ]]; then
     echo "apt-get not found. Install packages manually — see docs/UBUNTU.md"
     exit 1
   fi
-  echo "Installing apt packages (sudo)..."
+  echo "Installing base apt packages (sudo)..."
   sudo apt-get update
-  sudo apt-get install -y "${INSTALL_APT_PACKAGES[@]}"
+  sudo apt-get install -y "${BASE_APT_PACKAGES[@]}"
+
+  if command -v docker >/dev/null 2>&1; then
+    ok "Docker already installed — skipping docker.io (avoids containerd.io conflict)"
+    if ! compose_available; then
+      echo "Installing docker compose plugin only..."
+      if ! sudo apt-get install -y docker-compose-plugin 2>/dev/null; then
+        warn "Could not install docker-compose-plugin via apt."
+        warn "If you use Docker CE, ensure compose v2: docker compose version"
+      fi
+    fi
+  elif docker_ce_installed; then
+    warn "Docker CE packages detected but 'docker' not in PATH — try: sudo systemctl start docker"
+  else
+    echo "Installing docker.io (clean Ubuntu without Docker CE)..."
+    sudo apt-get install -y docker.io docker-compose-plugin
+  fi
+
   sudo systemctl enable --now docker 2>/dev/null || true
   if ! id -nG "${USER:-}" 2>/dev/null | grep -qw docker; then
     echo "Adding $USER to docker group..."

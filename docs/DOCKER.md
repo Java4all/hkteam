@@ -18,13 +18,16 @@ make prerequisites-check   # verify only
 make prerequisites         # apt install + docker group + .env template
 ```
 
-Or manually:
+**Brev / Docker CE images:** Docker is often pre-installed. Do **not** run `apt install docker.io` — it conflicts with `containerd.io`. Use `make prerequisites-check`; if Docker works, go straight to `make start`.
+
+Or manually (only if Docker is missing):
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-plugin make curl git python3 python3-venv python3-pip
+sudo apt install -y make curl git python3 python3-venv python3-pip
+# only if docker command is missing:
+# sudo apt install -y docker.io docker-compose-plugin
 sudo usermod -aG docker $USER
-# log out and back in
 ```
 
 Optional: `export NVIDIA_API_KEY=nvapi-...` in `.env` (not in image).
