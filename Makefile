@@ -14,25 +14,17 @@ else
   PIP      ?= .venv/bin/pip
 endif
 
-.PHONY: help prerequisites prerequisites-check setup install start stop restart status demo test health logs clean build shell-api
+.PHONY: help prerequisites prerequisites-check setup install build chainlit-init bootstrap-chainlit diagnose-chainlit start stop restart status demo test health logs clean shell-api
 
-help: ## Show targets
-	@echo Smart City Crisis Management v1.0 (Docker stack)
+help: ## Show all make targets (default)
+	@echo Smart City Crisis Management v1.0 — Docker stack
 	@echo.
-	@echo   make prerequisites        Check/install Ubuntu packages (docker, make, curl, ...)
-	@echo   make prerequisites-check  Check only, no install
-	@echo   make setup                prerequisites + .env + optional host venv
-	@echo   make install              Host venv for local pytest/demo (optional)
-	@echo   make start                Docker: postgres + langfuse + api + chainlit
-	@echo   make stop        Docker compose down
-	@echo   make restart     stop + start
-	@echo   make status      Container status
-	@echo   make build       Build app image only
-	@echo   make demo        Host demo script (mock without API key)
-	@echo   make test        Host pytest (mock LLM, no Docker required)
-	@echo   make health      Curl API /health
-	@echo   make logs        Follow compose logs
-	@echo   make clean       Down + remove volumes (destructive)
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9][a-zA-Z0-9_-]*:.*## / {printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+	@echo.
+	@echo URLs after make start:
+	@echo "  Chainlit  http://127.0.0.1:7860"
+	@echo "  API       http://127.0.0.1:8080/health"
+	@echo "  Langfuse  http://127.0.0.1:3000"
 
 ifeq ($(OS),Windows_NT)
 prerequisites-check prerequisites:
@@ -78,6 +70,10 @@ bootstrap-chainlit: ## Create .chainlit on host via Docker if missing
 	chmod +x scripts/bootstrap-chainlit.sh
 	bash scripts/bootstrap-chainlit.sh
 
+diagnose-chainlit: ## Debug Chainlit blank UI / project/settings 500
+	chmod +x scripts/diagnose-chainlit.sh
+	bash scripts/diagnose-chainlit.sh
+
 start: ## Start full stack (Docker)
 	@test -f .env || (echo "Copy .env.example to .env first" && exit 1)
 	$(COMPOSE) up -d --build
@@ -91,7 +87,7 @@ start: ## Start full stack (Docker)
 stop: ## Stop Docker stack
 	$(COMPOSE) down
 
-restart: stop start ## Restart stack
+restart: stop start ## Restart Docker stack (stop + start)
 
 status: ## Docker compose ps
 	$(COMPOSE) ps

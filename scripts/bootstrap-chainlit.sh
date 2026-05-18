@@ -25,4 +25,5 @@ fi
 
 echo "Created:"
 grep generated_by .chainlit/config.toml || true
-echo "Next: make build && make restart"
+echo "Next: make build --no-cache && make restart"
+echo "Note: Docker image also runs 'chainlit init' at build — host .chainlit is optional."

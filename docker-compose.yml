@@ -81,11 +81,11 @@ services:
         condition: service_healthy
     ports:
       - "${CHAINLIT_PORT:-7860}:7860"
-    env_file: .env
+    # Do not use env_file here — Langfuse/DB vars can break Chainlit settings endpoint
     environment:
       API_BASE_URL: http://api:8080
-      # Browser URL (port-forward / laptop). Must match what you open in the browser.
       CHAINLIT_URL: ${CHAINLIT_URL:-http://localhost:7860}
+      PYTHONUNBUFFERED: "1"
     working_dir: /app
     command:
       [
@@ -101,11 +101,17 @@ services:
         "--headless",
       ]
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:7860/"]
+      test:
+        [
+          "CMD",
+          "curl",
+          "-sf",
+          "http://localhost:7860/project/settings?language=en-US",
+        ]
       interval: 15s
       timeout: 5s
       retries: 6
-      start_period: 25s
+      start_period: 30s
 
 volumes:
   crisis_pg:

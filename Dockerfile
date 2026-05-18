@@ -7,14 +7,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md chainlit.md ./
-COPY .chainlit ./.chainlit
 COPY src ./src
 COPY configs ./configs
 COPY data ./data
 
 RUN pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir -e "." \
-    && python -c "from chainlit.config import load_config; load_config()"
+    && python -m chainlit init \
+    && sed -i 's/^name = "Assistant"/name = "Smart City Crisis Management"/' .chainlit/config.toml \
+    && python -c "from chainlit.config import load_config; c=load_config(); print('chainlit config OK:', c.ui.name)"
 
 ENV PYTHONUNBUFFERED=1
 ENV API_HOST=0.0.0.0

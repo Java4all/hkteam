@@ -38,6 +38,8 @@ make health
 
 ## Make commands
 
+Run **`make`** or **`make help`** to list all targets.
+
 | Command | Description |
 |---------|-------------|
 | `make start` | **Docker:** postgres + langfuse + api + chainlit |
@@ -46,6 +48,7 @@ make health
 | `make test` | Host pytest (mock LLM, no Docker) |
 | `make demo` | Host terminal demo |
 | `make clean` | Remove containers **and volumes** |
+| `make bootstrap-chainlit` | Create `.chainlit/config.toml` on host if missing |
 
 ## Stack (v1.0 mandatory in Docker)
 
