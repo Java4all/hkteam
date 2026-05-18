@@ -84,6 +84,10 @@ langfuse-keys-help: ## Print where API keys live in Langfuse v3 UI
 	@echo "Wrong URL (no API keys): /organization/.../settings"
 	@echo "Optional: LANGFUSE_INIT_* in .env — see .env.example and docs/DOCKER.md"
 
+diagnose-nvidia: ## Full NVIDIA LLM diagnostic (packages, HTTP probe, LangChain)
+	chmod +x scripts/diagnose-nvidia.sh
+	bash scripts/diagnose-nvidia.sh
+
 verify-nvidia-api: ## Test NVIDIA_API_KEY + cloud model from api container
 	chmod +x scripts/verify-nvidia-api.sh
 	bash scripts/verify-nvidia-api.sh

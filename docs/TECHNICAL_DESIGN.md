@@ -546,39 +546,65 @@ Pre-compile subgraphs per `agent_id` at startup; workflow body loaded from YAML 
 
 #### 8.1.1 Inference architecture (decided)
 
-The application runs on an **NVIDIA GPU instance** (P1+) for LangGraph, Chainlit, Langfuse, and Postgres. **LLM inference** uses **NVIDIA cloud** with a **different model per agent** on the same API endpoint. Optionally, **one small local NIM** on the instance serves agents assigned to the local endpoint (multi-endpoint deployment).
+The application runs on an **NVIDIA GPU instance** (P1+) for LangGraph, Chainlit, Langfuse, and Postgres. **LLM inference** uses **NVIDIA cloud** with a **different model per role/agent** on the same API endpoint (`NIM_CLOUD_BASE_URL`). Optionally, **one small local NIM** on the instance serves agents assigned to a `local_*` profile (see `configs/llm/local.yaml`).
 
-**Cloud — per-agent models (same `base_url`, different `model_name`):**
+**Configuration file:** `configs/llm/multimodel.yaml` (selected by `LLM_PROFILE=multimodel` in `.env`).
 
-| Agent / role | Cloud model (example) | Rationale |
-|--------------|----------------------|-----------|
-| Classifier, router LLM, workflow selector | `nvidia/nemotron-mini-4b-instruct` | Fast, low cost |
-| Flood, infrastructure, public_safety | `meta/llama-3.1-8b-instruct` | General specialist |
-| Cyber | `mistralai/mistral-7b-instruct-v0.3` | Domain-tuned model choice |
-| Public services, comms | `microsoft/phi-4-mini-instruct` | Shorter drafts |
-| **Aggregator** | `meta/llama-3.1-70b-instruct` | Highest quality merge |
-| Incident critic | `meta/llama-3.1-8b-instruct` | Consistent verification |
-| Embeddings (RAG, future) | `nvidia/nv-embed-v1` | Not wired in v1.0; optional on build.nvidia.com |
+**API key:** One `NVIDIA_API_KEY` (`nvapi-...`) for the whole stack — **not** one key per model. On [build.nvidia.com](https://build.nvidia.com/), open each model page you need and accept / try the model so your account can call it with that key. Verify with `make verify-nvidia-api` or `GET https://integrate.api.nvidia.com/v1/models`.
 
-**Local — optional second endpoint:**
+#### 8.1.2 Model profiles (`configs/llm/multimodel.yaml`)
+
+Profiles are reusable client settings (`base_url`, `model`, temperature, `max_tokens`). Assignments point roles/agents at a profile.
+
+| Profile ID | NVIDIA model ID | Typical use |
+|------------|-----------------|-------------|
+| `cloud_nemotron_mini` | `nvidia/nemotron-mini-4b-instruct` | Fast routing / classification |
+| `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Specialist agents (flood, utilities, …) |
+| `cloud_llama_70b` | `meta/llama-3.3-70b-instruct` | Aggregator (merge specialist outputs) |
+| `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | Cyber specialist |
+| `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | Comms / public_services (Phi-3 not on current catalog) |
+| `cloud_nemotron_super` | `nvidia/llama-3.3-nemotron-super-49b-v1.5` | Defined, not assigned in v1.0 (optional upgrade) |
+| `local_llama_8b` | `meta/llama-3.1-8b-instruct` | Optional local NIM (`NIM_LOCAL_BASE_URL`) |
+
+**Embeddings (v1.0):** `embeddings.provider: none` — RAG is not wired; no embedding calls at runtime. Planned model when enabled: `nvidia/nv-embed-v1` (on build.nvidia.com; not `nv-embedqa-e5-v5` for new deployments).
+
+#### 8.1.3 Where each model is used (assignments)
+
+| Pipeline stage / agent | Profile | NVIDIA model ID | Code path |
+|------------------------|---------|-----------------|-----------|
+| Classifier | `cloud_nemotron_mini` | `nvidia/nemotron-mini-4b-instruct` | Incident classification (rules + LLM) |
+| Smart router LLM | `cloud_nemotron_mini` | same | `smart_route` — subset of specialist agents |
+| Workflow selector (default) | `cloud_nemotron_mini` | same | `select_workflow()` per agent |
+| **Aggregator** | `cloud_llama_70b` | `meta/llama-3.3-70b-instruct` | `node_aggregate` — incident summary |
+| Incident critic | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Critic / verification steps |
+| Specialist **flood** | `cloud_nemotron_nano_8b` | same | `run_specialist` → `node_run_specialists` |
+| Specialist **utilities** | `cloud_nemotron_nano_8b` | same | Example 02 (flood + utilities) |
+| Specialist **infrastructure** | `cloud_nemotron_nano_8b` | same | |
+| Specialist **public_safety** | `cloud_nemotron_nano_8b` | same | |
+| Specialist **general** | `cloud_nemotron_nano_8b` | same | |
+| Specialist **cyber** | `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | |
+| Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | |
+| Specialist **comms** | `cloud_phi_mini` | same | Often added for HIGH/CRITICAL severity |
+
+**Example 02** (flood + utilities) invokes at minimum: **nemotron-mini** (classify/route), **nemotron-nano-8b** (flood + utilities specialists), **llama-3.3-70b** (aggregate).
+
+**Local — optional second endpoint** (`LLM_PROFILE=local` or override utilities to `local_llama_8b`):
 
 | Agent | Endpoint | Model |
 |-------|----------|-------|
-| Utilities (configurable) | `http://127.0.0.1:8000/v1` | `meta/llama-3.1-8b-instruct` |
+| All agents (local profile) | `http://127.0.0.1:8000/v1` | `meta/llama-3.1-8b-instruct` |
 
-Configure assignments in `configs/llm/multimodel.yaml`. Model IDs must be enabled on your NVIDIA API account.
+**Observability:** Langfuse spans tag `agent_id`, `llm_profile`, `llm_model`, and `llm_provider` (`cloud` \| `local`) per specialist invoke.
 
-**Observability:** Langfuse spans tag `agent_id`, `llm_provider` (`cloud`|`local`), and `model_name` per invocation.
+**GPU instance:** hosts the application stack and optional local NIM; large models (e.g. 70B aggregator) stay on cloud unless explicitly reassigned.
 
-**GPU instance:** hosts the application stack and optional local 8B NIM; large models (e.g. 70B aggregator) stay on cloud unless explicitly moved local.
+**Per-agent override:** `configs/agents/<agent>.yaml` may set `llm.profile` or inline `llm.model` to override the global assignment map (future).
 
-**Per-agent override:** `configs/agents/<agent>.yaml` may set `llm.profile` or inline `llm.model` to override the global assignment map.
+#### 8.1.4 Optional air-gapped / full-local deployment
 
-#### 8.1.2 Optional air-gapped / full-local deployment
+For environments that cannot use cloud inference, use `configs/llm/local.yaml` (`LLM_PROFILE=local`) or set `CRISIS_USE_MOCK_LLM=true` for offline demo/tests.
 
-For environments that cannot use cloud inference, add a second LLM profile (e.g. `configs/llm/local_only.yaml`) mapping most agents to local NIM endpoints and a dedicated 70B NIM or burst policy for the aggregator.
-
-#### 8.1.3 LLM registry (implementation)
+#### 8.1.5 LLM registry (implementation)
 
 Load `configs/llm/<LLM_PROFILE>.yaml` at startup (restart on change — O4). Build a cache of clients keyed by `profile_id`:
 
@@ -597,15 +623,16 @@ Log and trace every invoke: `agent_id`, `profile_id`, `base_url`, `model`.
 
 ```mermaid
 flowchart LR
-  KEY[NVIDIA_API_KEY]
+  KEY[NVIDIA_API_KEY one key]
   CLOUD[integrate.api.nvidia.com/v1]
-  LOCAL[127.0.0.1:8000/v1]
+  LOCAL[127.0.0.1:8000/v1 optional]
   KEY --> CLOUD
-  CLOUD --> M1[nemotron-mini classifier]
-  CLOUD --> M2[mistral-7b cyber]
-  CLOUD --> M3[llama-70b aggregator]
-  CLOUD --> M4[phi-3 comms]
-  LOCAL --> M5[llama-8b utilities]
+  CLOUD --> M1[nemotron-mini classify route]
+  CLOUD --> M2[nemotron-nano-8b specialists]
+  CLOUD --> M3[llama-3.3-70b aggregate]
+  CLOUD --> M4[mistral-7b cyber]
+  CLOUD --> M5[phi-4-mini comms]
+  LOCAL --> M6[llama-8b local profile]
 ```
 
 ### 8.2 NAT (tools / RAG)
@@ -715,7 +742,7 @@ Retention: 90 days minimum (Req 13.4).
 
 ### 12.2 Docker Compose containers (v1.0)
 
-v1.0 runs as **four containers** on a single Docker host (`docker compose up`, `make start`). There is **no separate NIM container** in the default stack — the `api` service calls **NVIDIA cloud** over HTTPS (`integrate.api.nvidia.com`). Optional local NIM is documented in §8.1.2 and runs outside this compose file if needed.
+v1.0 runs as **four containers** on a single Docker host (`docker compose up`, `make start`). There is **no separate NIM container** in the default stack — the `api` service calls **NVIDIA cloud** over HTTPS (`integrate.api.nvidia.com`). Optional local NIM is documented in §8.1.3–8.1.4 and runs outside this compose file if needed.
 
 #### 12.2.1 Container map
 
@@ -920,7 +947,7 @@ hkteam/
 
 **O4 operational note:** Use container/process restart or rolling deploy in Kubernetes; document config mount paths in runbooks.
 
-**O5 note:** Per-agent models are defined in `configs/llm/multimodel.yaml`. Run local 8B NIM only for agents assigned a `local_*` profile (default: `utilities`).
+**O5 note:** Per-agent models are defined in `configs/llm/multimodel.yaml` (§8.1.2–8.1.3). Enable models on [build.nvidia.com](https://build.nvidia.com/) with a single `NVIDIA_API_KEY`; run `make verify-nvidia-api`. Local NIM: assign `local_llama_8b` in YAML or use `LLM_PROFILE=local`.
 
 ---
 

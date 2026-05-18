@@ -17,8 +17,9 @@ def _expand_env(value: Any) -> Any:
 
         def repl(m: re.Match[str]) -> str:
             key = m.group(1)
-            if key in os.environ:
-                return os.environ[key]
+            env_val = os.environ.get(key, "").strip()
+            if env_val:
+                return env_val
             _map = {
                 "NIM_CLOUD_BASE_URL": "nim_cloud_base_url",
                 "NIM_LOCAL_BASE_URL": "nim_local_base_url",
@@ -26,7 +27,7 @@ def _expand_env(value: Any) -> Any:
             }
             attr = _map.get(key)
             if attr:
-                return str(getattr(settings, attr, "") or "")
+                return str(getattr(settings, attr, "") or "").strip()
             return ""
 
         return _ENV_PATTERN.sub(repl, value)

@@ -1,17 +1,8 @@
 from __future__ import annotations
 
-from urllib.parse import urlparse
-
+from crisis.llm.nvidia_client import build_chat_model, package_versions, probe_cloud_chat
+from crisis.llm.nvidia_urls import HOSTED_CLOUD_BASE
 from crisis.settings import settings
-
-_HOSTED = frozenset({"integrate.api.nvidia.com", "ai.api.nvidia.com"})
-
-
-def is_hosted_nim_url(base_url: str) -> bool:
-    try:
-        return urlparse(base_url).netloc in _HOSTED
-    except Exception:
-        return False
 
 
 def nvidia_api_key_configured() -> bool:
@@ -24,7 +15,9 @@ def nvidia_health() -> dict:
         "configured": nvidia_api_key_configured(),
         "mock_llm": settings.crisis_use_mock_llm,
         "profile": settings.llm_profile,
-        "base_url": settings.nim_cloud_base_url,
+        "base_url": settings.nim_cloud_base_url or HOSTED_CLOUD_BASE,
+        "packages": package_versions(),
+        "client": "langchain_openai.ChatOpenAI (hosted) / ChatNVIDIA (local NIM)",
     }
     if settings.crisis_use_mock_llm:
         out["ok"] = True
@@ -34,23 +27,35 @@ def nvidia_health() -> dict:
         out["ok"] = False
         out["error"] = "Set NVIDIA_API_KEY in .env (nvapi-... from build.nvidia.com)"
         return out
-    try:
-        from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
-        llm = ChatNVIDIA(
-            model="nvidia/nemotron-mini-4b-instruct",
-            api_key=settings.nvidia_api_key.strip(),
-            max_completion_tokens=8,
+    probe_model = "nvidia/nemotron-mini-4b-instruct"
+    key = settings.nvidia_api_key.strip()
+    out["http_probe"] = probe_cloud_chat(model=probe_model, api_key=key)
+
+    try:
+        llm = build_chat_model(
+            model=probe_model,
+            base_url=settings.nim_cloud_base_url,
+            api_key=key,
+            temperature=0.1,
+            max_tokens=8,
         )
         llm.invoke("ping")
         out["ok"] = True
-        out["probe_model"] = "nvidia/nemotron-mini-4b-instruct"
+        out["probe_model"] = probe_model
     except Exception as exc:
         out["ok"] = False
         out["error"] = str(exc)
-        if "404" in str(exc):
+        http = out.get("http_probe") or {}
+        if http.get("ok"):
+            out["hint"] = "HTTP probe succeeded but LangChain client failed — rebuild api image (pip install -e .)"
+        elif http.get("status_code") == 401:
+            out["hint"] = "Invalid NVIDIA_API_KEY — regenerate at build.nvidia.com"
+        elif http.get("status_code") == 403:
+            out["hint"] = "Key valid format but forbidden — enable model on build.nvidia.com for this account"
+        elif http.get("status_code") == 404 or "404" in str(exc):
             out["hint"] = (
-                "404 from integrate.api.nvidia.com — check NVIDIA_API_KEY and model IDs "
-                "in configs/llm/multimodel.yaml; list models at GET /v1/models"
+                "404 — check NIM_CLOUD_BASE_URL=https://integrate.api.nvidia.com/v1 in .env; "
+                "rebuild api: docker compose --env-file .env build --no-cache api"
             )
     return out
