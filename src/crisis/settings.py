@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     api_base_url: str = "http://127.0.0.1:8080"
 
     database_url: str = ""
+    postgres_user: str = "crisis"
+    postgres_password: str = "crisis"
+    postgres_db: str = "crisis"
     simulation_mode: bool = True
     log_level: str = "INFO"
 
@@ -22,7 +25,7 @@ class Settings(BaseSettings):
     llm_profile: str = "multimodel"
     crisis_use_mock_llm: bool = False
 
-    langfuse_enabled: bool = False
+    langfuse_enabled: bool = True
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_host: str = "http://localhost:3000"

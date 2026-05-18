@@ -6,6 +6,8 @@ import pytest
 
 os.environ["CRISIS_USE_MOCK_LLM"] = "true"
 os.environ["LLM_PROFILE"] = "multimodel"
+os.environ["DATABASE_URL"] = ""
+os.environ["LANGFUSE_ENABLED"] = "false"
 
 from crisis.graph.incident_graph import run_incident_pipeline
 from crisis.models.enums import Category, SeverityLevel

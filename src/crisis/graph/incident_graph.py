@@ -9,6 +9,8 @@ from crisis.agents.specialist import run_specialist
 from crisis.graph.state import IncidentState
 from crisis.models.enums import IncidentStatus
 from crisis.models.schemas import IncidentReport, RouterHandoff
+from crisis.models.schemas import SpecialistOutput
+from crisis.observability.langfuse import get_langfuse_config
 from crisis.routing.classifier import classify_incident
 from crisis.routing.smart_router import route_incident
 
@@ -111,4 +113,5 @@ def run_incident_pipeline(report: IncidentReport) -> IncidentState:
         "report": report,
         "trace": ["start"],
     }
-    return graph.invoke(init)
+    config = get_langfuse_config(tags=["incident-pipeline"])
+    return graph.invoke(init, config=config)

@@ -1,92 +1,53 @@
-# Runbook — Smart City Crisis Management v1.0 (Ubuntu)
+# Runbook — Smart City Crisis Management v1.0
 
-See also: [UBUNTU.md](UBUNTU.md) for full setup and troubleshooting.
+**Primary:** [DOCKER.md](DOCKER.md) — `make start`
 
-## Prerequisites
+## Prerequisites (Ubuntu)
 
 ```bash
-sudo apt update
-sudo apt install -y python3 python3-venv make curl
+make prerequisites-check
+make prerequisites         # installs packages (sudo), creates .env
 ```
 
-## One-command workflow (Make)
+## Start / stop
 
 ```bash
-make install
 cp .env.example .env
-nano .env    # NVIDIA_API_KEY=nvapi-...
-
-make start      # API http://127.0.0.1:8080 + Chainlit http://127.0.0.1:7860
+nano .env
+make start
 make status
-make demo
 make health
-make logs       # tail logs (Ctrl+C to exit)
+make logs
 make stop
 make restart
 ```
 
-Logs: `logs/api.log`, `logs/chainlit.log`
+## Langfuse keys (required for tracing)
 
-## Shell scripts (without Make)
+1. http://localhost:3000 → create account & project  
+2. Copy API keys into `.env`  
+3. `make restart`
 
-```bash
-chmod +x scripts/*.sh
-./scripts/start.sh all
-./scripts/status.sh
-./scripts/stop.sh
-```
-
-## Environment (`.env`)
+## Environment essentials
 
 ```env
-LLM_PROFILE=multimodel
-NIM_CLOUD_BASE_URL=https://integrate.api.nvidia.com/v1
 NVIDIA_API_KEY=nvapi-...
-CRISIS_USE_MOCK_LLM=false
-API_BASE_URL=http://127.0.0.1:8080
-SIMULATION_MODE=true
+DATABASE_URL=postgresql://crisis:crisis@postgres:5432/crisis
+LANGFUSE_ENABLED=true
+LANGFUSE_HOST=http://langfuse:3000
+LANGFUSE_NEXTAUTH_SECRET=...   # min 32 chars
+LANGFUSE_SALT=...              # min 32 chars
 ```
 
-GPU instance runs the **app**; **LLM calls use NVIDIA cloud** unless agents are assigned `local_*` in `configs/llm/multimodel.yaml`.
-
-## Manual run (foreground, two terminals)
+## Host tests (no Docker)
 
 ```bash
-source .venv/bin/activate
-cp .env.example .env
-
-# Terminal 1
-set -a && source .env && set +a
-.venv/bin/python -m uvicorn crisis.api.main:app --host 127.0.0.1 --port 8080
-
-# Terminal 2
-set -a && source .env && set +a
-.venv/bin/chainlit run src/crisis/ui/chainlit_app.py --port 7860 --host 127.0.0.1
-```
-
-## Offline demo
-
-```bash
-export CRISIS_USE_MOCK_LLM=true
-make demo
+make install
 make test
 ```
 
-## SSH access from your laptop
+## SSH port forward
 
 ```bash
-ssh -L 8080:127.0.0.1:8080 -L 7860:127.0.0.1:7860 ubuntu@<gpu-instance-ip>
+ssh -L 8080:127.0.0.1:8080 -L 7860:127.0.0.1:7860 -L 3000:127.0.0.1:3000 user@gpu-host
 ```
-
-Open `http://127.0.0.1:7860` locally.
-
-## Optional: local NIM on Ubuntu
-
-1. Run NIM on port `8000` (Docker or bare metal).
-2. Set agent to `local_llama_8b` in `configs/llm/multimodel.yaml`.
-3. Add `NIM_LOCAL_BASE_URL=http://127.0.0.1:8000/v1` to `.env`.
-4. `make restart`
-
-## Optional: Langfuse
-
-Self-host Langfuse (Docker), set `LANGFUSE_*` in `.env`, then `make restart`.

@@ -1,44 +1,62 @@
-# Smart City Crisis Management v1.0
-# Primary platform: Ubuntu / Linux (uses scripts/*.sh)
-# Windows: uses scripts/*.ps1 when OS=Windows_NT
+# Smart City Crisis Management v1.0 — Docker-first (Ubuntu / Linux)
+# Primary: make start  →  docker compose up (postgres + langfuse + api + chainlit)
 
 .DEFAULT_GOAL := help
+COMPOSE := docker compose --env-file .env
 
 ifeq ($(OS),Windows_NT)
   PY       ?= .venv/Scripts/python.exe
   PIP      ?= .venv/Scripts/pip.exe
-  VENV_BIN := .venv/Scripts
-  START    := powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start.ps1
-  STOP     := powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop.ps1
-  STATUS   := powershell -NoProfile -ExecutionPolicy Bypass -File scripts/status.ps1
 else
   PY       ?= .venv/bin/python
   PIP      ?= .venv/bin/pip
-  VENV_BIN := .venv/bin
-  START    := ./scripts/start.sh
-  STOP     := ./scripts/stop.sh
-  STATUS   := ./scripts/status.sh
 endif
 
-.PHONY: help install start start-api start-ui start-all stop restart status demo test health clean logs
+.PHONY: help prerequisites prerequisites-check setup install start stop restart status demo test health logs clean build shell-api
 
 help: ## Show targets
-	@echo Smart City Crisis Management — Make targets
+	@echo Smart City Crisis Management v1.0 (Docker stack)
 	@echo.
-	@echo   make install     Create .venv and install package
-	@echo   make start       Start API + Chainlit (background)
-	@echo   make start-api   Start API only
-	@echo   make start-ui    Start Chainlit only
-	@echo   make stop        Stop API and Chainlit
-	@echo   make restart     stop then start
-	@echo   make status      Show running services
-	@echo   make demo        Run 3 terminal demo scenarios
-	@echo   make test        Run pytest
-	@echo   make health      GET /health
-	@echo   make logs        Tail service logs
-	@echo   make clean       Remove logs, pids, caches
+	@echo   make prerequisites        Check/install Ubuntu packages (docker, make, curl, ...)
+	@echo   make prerequisites-check  Check only, no install
+	@echo   make setup                prerequisites + .env + optional host venv
+	@echo   make install              Host venv for local pytest/demo (optional)
+	@echo   make start                Docker: postgres + langfuse + api + chainlit
+	@echo   make stop        Docker compose down
+	@echo   make restart     stop + start
+	@echo   make status      Container status
+	@echo   make build       Build app image only
+	@echo   make demo        Host demo script (mock without API key)
+	@echo   make test        Host pytest (mock LLM, no Docker required)
+	@echo   make health      Curl API /health
+	@echo   make logs        Follow compose logs
+	@echo   make clean       Down + remove volumes (destructive)
 
-install: ## pip install -e ".[dev]"
+ifeq ($(OS),Windows_NT)
+prerequisites-check prerequisites:
+	@echo prerequisites targets require Ubuntu/Linux or WSL2.
+	@echo Run: bash scripts/prerequisites.sh --check
+	@exit 1
+
+setup:
+	@echo On Windows use WSL2, then: make prerequisites && make start
+	@exit 1
+else
+prerequisites-check: ## Check host prerequisites (no sudo)
+	chmod +x scripts/prerequisites.sh
+	./scripts/prerequisites.sh --check
+
+prerequisites: ## Install/check Ubuntu prerequisites (uses sudo)
+	chmod +x scripts/prerequisites.sh
+	./scripts/prerequisites.sh --install
+
+setup: prerequisites ## Full first-time setup: apt + .env
+	@test -f .env || cp .env.example .env
+	@echo ""
+	@echo "Setup done. Edit .env then: make start"
+endif
+
+install: ## Local venv for pytest (optional)
 ifeq ($(OS),Windows_NT)
 	@if not exist .venv python -m venv .venv
 else
@@ -46,41 +64,43 @@ else
 endif
 	$(PIP) install -U pip
 	$(PIP) install -e ".[dev]"
-	chmod +x scripts/*.sh 2>/dev/null || true
 
-start: ## Start API + Chainlit
-	$(START) all
+build: ## Build Docker images
+	$(COMPOSE) build
 
-start-api: ## Start FastAPI only
-	$(START) api
+start: ## Start full stack (Docker)
+	@test -f .env || (echo "Copy .env.example to .env first" && exit 1)
+	$(COMPOSE) up -d --build
+	@echo ""
+	@echo "API:       http://127.0.0.1:8080/health"
+	@echo "Chainlit:  http://127.0.0.1:7860"
+	@echo "Langfuse:  http://127.0.0.1:3000"
+	@echo ""
+	@echo "Create Langfuse project → copy keys to .env → make restart"
 
-start-ui: ## Start Chainlit only
-	$(START) ui
+stop: ## Stop Docker stack
+	$(COMPOSE) down
 
-start-all: start ## Alias for start
+restart: stop start ## Restart stack
 
-stop: ## Stop background services
-	$(STOP)
+status: ## Docker compose ps
+	$(COMPOSE) ps
 
-restart: stop ## Restart API + Chainlit
-	@$(START) all
-
-status: ## Show PIDs / ports
-	$(STATUS)
-
-demo: ## Run scripted demo (cloud if NVIDIA_API_KEY set, else mock)
+demo: ## Terminal demo on host (set CRISIS_USE_MOCK_LLM=true without API key)
 	$(PY) -m crisis.scripts.run_demo
 
-test: ## pytest
-	$(PY) -m pytest tests/ -v
+test: ## pytest on host (no Docker)
+	CRISIS_USE_MOCK_LLM=true $(PY) -m pytest tests/ -v
 
-health: ## Curl API health
-	@curl -s http://127.0.0.1:8080/health | $(PY) -m json.tool 2>/dev/null || curl -s http://127.0.0.1:8080/health
+health: ## API health check
+	@curl -sf http://127.0.0.1:8080/health | $(PY) -m json.tool 2>/dev/null || curl -s http://127.0.0.1:8080/health
 
-logs: ## Tail logs/api.log and logs/chainlit.log
-	@test -f logs/api.log && tail -f logs/api.log logs/chainlit.log || echo "No logs yet. Run make start first."
+logs: ## Follow all service logs
+	$(COMPOSE) logs -f --tail=100
 
-clean: ## Remove runtime artifacts
-	$(STOP) 2>/dev/null || true
+clean: ## Stop and remove volumes
+	$(COMPOSE) down -v
 	rm -rf .pids logs/*.log 2>/dev/null || true
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+
+shell-api: ## Shell inside api container
+	$(COMPOSE) exec api bash

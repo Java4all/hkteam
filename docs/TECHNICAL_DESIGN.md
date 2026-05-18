@@ -19,7 +19,7 @@ This document is the **build reference** for the Smart City Crisis Management ap
 
 It consolidates product requirements, architecture decisions from design reviews, and patterns proven in prior work (LangGraph router→enrich→draft→critic, Plan–Guard–Act–Verify, NAT+NIM configs, RAG pipelines).
 
-**Out of scope for v1.0 code:** autonomous dispatch; live SCADA/CAD integrations; NAT tool workflows; Postgres persistence (in-memory store); mid-workflow switch (P2).
+**Out of scope for v1.0 code:** autonomous dispatch; live SCADA/CAD integrations; NAT tool workflows; mid-workflow switch (P2).
 
 ### 1.1 v1.0 implementation scope
 
@@ -29,11 +29,12 @@ It consolidates product requirements, architecture decisions from design reviews
 | Multi-specialist fan-out (parallel/sequential) | Implemented |
 | Per-agent workflow selection | Implemented |
 | Aggregator + HITL (API + Chainlit) | Implemented |
-| LLM profiles `local` + `multimodel` | Config ready |
-| **v1.0 runtime default** | **`LLM_PROFILE=multimodel`** — NVIDIA cloud, different model per agent |
-| Offline tests / CI | **`CRISIS_USE_MOCK_LLM=true`** only when no API key |
-| Langfuse | Optional (env flag) |
-| Local NIM | Optional — assign `local_*` profiles in YAML or use `LLM_PROFILE=local` |
+| **Docker Compose stack** | **Mandatory** — `make start` |
+| **PostgreSQL** | **Mandatory** in Docker — incident persistence |
+| **Langfuse** | **Mandatory** in Docker — self-hosted v2 image |
+| LLM | **`LLM_PROFILE=multimodel`** — NVIDIA cloud from containers |
+| Host pytest | `make test` — mock LLM, no Docker |
+| Local NIM | Optional — `local_*` profiles in YAML |
 
 ---
 

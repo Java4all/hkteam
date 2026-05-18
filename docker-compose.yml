@@ -1,15 +1,99 @@
-# Optional services for v1.0 — API runs on host via: pip install -e . && crisis-api
+# Smart City Crisis Management v1.0 — full stack (mandatory components)
+# Usage: cp .env.example .env && make start
+
+name: smart-city-crisis
+
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: crisis
-      POSTGRES_PASSWORD: crisis
-      POSTGRES_DB: crisis
+      POSTGRES_USER: ${POSTGRES_USER:-crisis}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crisis}
+      POSTGRES_DB: ${POSTGRES_DB:-crisis}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - crisis_pg:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crisis} -d ${POSTGRES_DB:-crisis}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  langfuse:
+    image: langfuse/langfuse:2
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${LANGFUSE_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-crisis}:${POSTGRES_PASSWORD:-crisis}@postgres:5432/langfuse
+      NEXTAUTH_URL: ${LANGFUSE_NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-change-me-langfuse-secret-min-32-chars}
+      SALT: ${LANGFUSE_SALT:-change-me-langfuse-salt-min-32-characters}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/public/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  api:
+    build: .
+    image: smart-city-crisis-app:1.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      langfuse:
+        condition: service_started
+    ports:
+      - "${API_PORT:-8080}:8080"
+    env_file: .env
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-crisis}:${POSTGRES_PASSWORD:-crisis}@postgres:5432/${POSTGRES_DB:-crisis}
+      LANGFUSE_HOST: http://langfuse:3000
+      LANGFUSE_ENABLED: "true"
+    volumes:
+      - ./configs:/app/configs:ro
+      - ./data:/app/data:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  chainlit:
+    image: smart-city-crisis-app:1.0
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${CHAINLIT_PORT:-7860}:7860"
+    env_file: .env
+    environment:
+      API_BASE_URL: http://api:8080
+    command:
+      [
+        "python",
+        "-m",
+        "chainlit",
+        "run",
+        "src/crisis/ui/chainlit_app.py",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "7860",
+      ]
+    volumes:
+      - ./src/crisis/ui:/app/src/crisis/ui:ro
 
 volumes:
   crisis_pg:

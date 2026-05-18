@@ -3,8 +3,17 @@
 ## 1. System packages
 
 ```bash
+make prerequisites-check
+make prerequisites
+```
+
+This installs: `docker.io`, `docker-compose-plugin`, `make`, `curl`, `git`, `python3`, `python3-venv`, `python3-pip`, enables Docker, and creates `.env` from `.env.example`.
+
+Manual equivalent:
+
+```bash
 sudo apt update
-sudo apt install -y python3 python3-venv python3-pip make curl git
+sudo apt install -y python3 python3-venv python3-pip make curl git docker.io docker-compose-plugin
 ```
 
 Python **3.11+** is required. Check:

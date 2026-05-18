@@ -4,12 +4,22 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from contextlib import asynccontextmanager
+
 from crisis.graph.incident_graph import run_incident_pipeline
 from crisis.models.schemas import HumanDecision, IncidentReport
+from crisis.observability.langfuse import langfuse_health
 from crisis.settings import settings
-from crisis.store.memory import incident_store
+from crisis.store import get_incident_store
 
-app = FastAPI(title="Smart City Crisis Management", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(app):  # noqa: ARG001
+    get_incident_store()
+    yield
+
+
+app = FastAPI(title="Smart City Crisis Management", version="1.0.0", lifespan=lifespan)
 
 
 class HumanDecisionRequest(BaseModel):
@@ -27,6 +37,8 @@ def health():
         "llm_profile": settings.llm_profile,
         "mock_llm": settings.crisis_use_mock_llm,
         "simulation_mode": settings.simulation_mode,
+        "database": bool(settings.database_url),
+        "langfuse": langfuse_health(),
     }
 
 
@@ -36,8 +48,9 @@ def create_incident(report: IncidentReport):
         raise HTTPException(400, detail={"missing_fields": ["description"]})
     if not report.location.strip():
         raise HTTPException(400, detail={"missing_fields": ["location"]})
+    store = get_incident_store()
     state = run_incident_pipeline(report)
-    incident_store.save_pipeline_result(state)
+    store.save_pipeline_result(state)
     inc = state["incident"]
     return {
         "incident_id": inc.incident_id,
@@ -52,7 +65,7 @@ def create_incident(report: IncidentReport):
 
 @app.get("/incidents/{incident_id}")
 def get_incident(incident_id: str):
-    row = incident_store.get(incident_id)
+    row = get_incident_store().get(incident_id)
     if not row:
         raise HTTPException(404, detail="Incident not found")
     inc = row["incident"]
@@ -78,7 +91,7 @@ def post_decision(incident_id: str, body: HumanDecisionRequest):
         rejected_recommendation_ids=body.rejected_recommendation_ids,
         rejection_reason=body.rejection_reason,
     )
-    if not incident_store.record_human_decision(incident_id, decision):
+    if not get_incident_store().record_human_decision(incident_id, decision):
         raise HTTPException(404, detail="Incident not found")
     dispatch_note = "SIMULATION: no external dispatch." if settings.simulation_mode else "Dispatch queued."
     return {"incident_id": incident_id, "decision": decision.model_dump(mode="json"), "dispatch": dispatch_note}

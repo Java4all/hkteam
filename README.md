@@ -2,81 +2,63 @@
 
 **Version 1.0** — multi-agent decision-support for city emergency operations teams.
 
-**Primary runtime:** Ubuntu (22.04+ recommended) on CPU/GPU cloud instances.
+**Runtime:** Docker Compose on **Ubuntu** (Postgres + Langfuse + API + Chainlit).
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [**Ubuntu setup**](docs/UBUNTU.md) | **Start here on Ubuntu** |
-| [**Runbook v1.0**](docs/RUNBOOK_v1.md) | Operations and LLM config |
-| [**Technical Design v1.0**](docs/TECHNICAL_DESIGN.md) | Architecture |
-| [Requirements](.kiro/specs/smart-city-crisis-management/requirements.md) | Product requirements |
+| [**Docker deployment**](docs/DOCKER.md) | **Start here** — full stack |
+| [Ubuntu setup](docs/UBUNTU.md) | Host prerequisites |
+| [Runbook v1.0](docs/RUNBOOK_v1.md) | Operations |
+| [Technical Design v1.0](docs/TECHNICAL_DESIGN.md) | Architecture |
 
-## Stack
-
-- **Orchestration:** LangGraph
-- **Inference (default):** NVIDIA **cloud** — per-agent models (`LLM_PROFILE=multimodel`)
-- **UI:** Chainlit · **API:** FastAPI · **Observability:** Langfuse (optional)
-
-## Quick start (Ubuntu)
+## Quick start (Ubuntu + Docker)
 
 ```bash
-sudo apt update
-sudo apt install -y python3 python3-venv make curl
+make prerequisites    # first time: apt packages + docker + .env
+nano .env             # NVIDIA_API_KEY, Langfuse NEXTAUTH_SECRET / SALT
+make start
+```
 
-cd hkteam
-make install
-cp .env.example .env
-nano .env                    # NVIDIA_API_KEY=nvapi-...
+| URL | Service |
+|-----|---------|
+| http://localhost:7860 | Chainlit (operators) |
+| http://localhost:8080/health | API |
+| http://localhost:3000 | Langfuse (traces) |
 
-make demo                    # terminal demo
-make start                   # API :8080 + Chainlit :7860
-make status
-# browser: http://127.0.0.1:7860
+After Langfuse UI is up: create project → add `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` to `.env` → `make restart`.
 
+```bash
 make stop
 make restart
+make logs
+make health
 ```
 
 ## Make commands
 
 | Command | Description |
 |---------|-------------|
-| `make install` | Create `.venv`, install package |
-| `make start` | Start API + Chainlit (background) |
-| `make stop` | Stop services |
-| `make restart` | Stop then start |
-| `make status` | PIDs, ports, health |
-| `make demo` | Run 3 demo scenarios |
-| `make test` | `pytest` |
-| `make health` | `curl /health` |
-| `make logs` | Tail `logs/*.log` |
+| `make start` | **Docker:** postgres + langfuse + api + chainlit |
+| `make stop` | Stop stack |
+| `make restart` | Restart stack |
+| `make test` | Host pytest (mock LLM, no Docker) |
+| `make demo` | Host terminal demo |
+| `make clean` | Remove containers **and volumes** |
 
-Shell scripts (without make): `./scripts/start.sh`, `./scripts/stop.sh`
+## Stack (v1.0 mandatory in Docker)
 
-## Offline demo (no API key)
+- **PostgreSQL** — incident store  
+- **Langfuse** — observability (self-hosted)  
+- **API** — FastAPI + LangGraph  
+- **Chainlit** — human-in-the-loop UI  
+- **NVIDIA cloud** — per-agent LLM (`multimodel` profile)
+
+## Optional: host-only dev
 
 ```bash
-export CRISIS_USE_MOCK_LLM=true
-make demo
+make install
 make test
-```
-
-## Configuration
-
-| File | Purpose |
-|------|---------|
-| `configs/llm/multimodel.yaml` | **Default** — per-agent NVIDIA cloud models |
-| `configs/llm/local.yaml` | Optional — all agents on local NIM |
-| `configs/smart_routing/` | Smart Router rules |
-
-## Project layout
-
-```text
-src/crisis/     Application code
-scripts/        start.sh, stop.sh (Ubuntu)
-tests/          pytest
-configs/        LLM + routing YAML
-data/           Synthetic knowledge base
+CRISIS_USE_MOCK_LLM=true make demo
 ```
