@@ -15,10 +15,15 @@ from crisis.agents.recommendations import agent_id_from_recommendation_id
 from crisis.ui.pipeline_animator import PipelineProgressUI
 from crisis.ui.pipeline_display import format_pipeline_stages, format_trace
 from crisis.ui.review_panel import (
-    build_review_actions,
+    build_footer_actions,
+    build_rec_card_actions,
     empty_review_state,
-    format_review_panel,
+    format_rec_card,
+    format_review_summary,
+    review_cards_key,
     review_session_key,
+    review_summary_key,
+    unique_recommendations_for_review,
 )
 
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
@@ -258,40 +263,66 @@ async def on_message(message: cl.Message):
         ),
     ).send()
 
-    await _send_review_panel(iid, recs)
+    review_recs = unique_recommendations_for_review(recs)
+    await _send_review_panel(iid, review_recs)
 
 
 async def _send_review_panel(iid: str, recs: list[dict]) -> None:
     state = empty_review_state(recs)
     cl.user_session.set(review_session_key(iid), state)
-    msg = cl.Message(
-        content=format_review_panel(iid, state),
-        actions=build_review_actions(iid, recs),
+
+    summary = cl.Message(content=format_review_summary(iid, state))
+    await summary.send()
+    cl.user_session.set(review_summary_key(iid), summary)
+
+    card_msgs: dict[str, cl.Message] = {}
+    for i, r in enumerate(recs):
+        rid = r["id"]
+        card = cl.Message(
+            content=format_rec_card(i, r, state),
+            actions=build_rec_card_actions(iid, rid, i, state),
+        )
+        await card.send()
+        card_msgs[rid] = card
+    cl.user_session.set(review_cards_key(iid), card_msgs)
+
+    footer = cl.Message(
+        content="**Submit** when every card is ✅ Approved or ❌ Rejected.",
+        actions=build_footer_actions(iid),
     )
-    await msg.send()
-    cl.user_session.set(f"review_msg_{iid}", msg)
+    await footer.send()
+    cl.user_session.set(f"review_footer_{iid}", footer)
 
 
 def _get_review_state(iid: str) -> dict | None:
     return cl.user_session.get(review_session_key(iid))
 
 
-async def _refresh_review_panel(iid: str) -> None:
+async def _refresh_review_summary(iid: str) -> None:
     state = _get_review_state(iid)
     if not state:
         return
-    msg = cl.user_session.get(f"review_msg_{iid}")
-    if msg:
-        msg.content = format_review_panel(iid, state)
-        msg.actions = build_review_actions(iid, state["recommendations"])
-        await msg.update()
+    summary = cl.user_session.get(review_summary_key(iid))
+    if summary:
+        summary.content = format_review_summary(iid, state)
+        await summary.update()
 
 
-def _rec_label(state: dict, rec_id: str) -> str:
+async def _refresh_rec_card(iid: str, rec_id: str) -> None:
+    state = _get_review_state(iid)
+    if not state:
+        return
+    cards: dict[str, cl.Message] = cl.user_session.get(review_cards_key(iid)) or {}
+    msg = cards.get(rec_id)
+    if not msg:
+        return
     for i, r in enumerate(state["recommendations"]):
         if r["id"] == rec_id:
-            return f"#{i + 1}"
-    return rec_id
+            msg.content = format_rec_card(i, r, state)
+            msg.actions = build_rec_card_actions(iid, rec_id, i, state)
+            await msg.update()
+            break
+    await _refresh_review_summary(iid)
 
 
 @cl.action_callback("approve_rec")
@@ -309,8 +340,7 @@ async def approve_rec(action: cl.Action):
         if rec_id in state["rejected"]:
             state["rejected"].remove(rec_id)
     cl.user_session.set(review_session_key(iid), state)
-    await _refresh_review_panel(iid)
-    await cl.Message(content=f"Marked {_rec_label(state, rec_id)} as **approved** (pending submit).").send()
+    await _refresh_rec_card(iid, rec_id)
 
 
 @cl.action_callback("reject_rec")
@@ -328,8 +358,7 @@ async def reject_rec(action: cl.Action):
         if rec_id in state["approved"]:
             state["approved"].remove(rec_id)
     cl.user_session.set(review_session_key(iid), state)
-    await _refresh_review_panel(iid)
-    await cl.Message(content=f"Marked {_rec_label(state, rec_id)} as **rejected** (pending submit).").send()
+    await _refresh_rec_card(iid, rec_id)
 
 
 @cl.action_callback("edit_rec")
@@ -364,10 +393,7 @@ async def edit_rec(action: cl.Action):
     if rec_id in state["rejected"]:
         state["rejected"].remove(rec_id)
     cl.user_session.set(review_session_key(iid), state)
-    await _refresh_review_panel(iid)
-    await cl.Message(
-        content=f"Saved edit for #{idx + 1} — marked approved (submit review to persist)."
-    ).send()
+    await _refresh_rec_card(iid, rec_id)
 
 
 @cl.action_callback("submit_review")
@@ -409,7 +435,8 @@ async def approve_all(action: cl.Action):
         state["approved"] = [r["id"] for r in state["recommendations"]]
         state["rejected"] = []
         cl.user_session.set(review_session_key(iid), state)
-        await _refresh_review_panel(iid)
+        for r in state["recommendations"]:
+            await _refresh_rec_card(iid, r["id"])
     row = await _get_incident(iid)
     if not row:
         await cl.Message(content="Incident not found.").send()
@@ -429,7 +456,8 @@ async def reject_all(action: cl.Action):
         state["rejected"] = [r["id"] for r in state["recommendations"]]
         state["approved"] = []
         cl.user_session.set(review_session_key(iid), state)
-        await _refresh_review_panel(iid)
+        for r in state["recommendations"]:
+            await _refresh_rec_card(iid, r["id"])
     resp = await _post_decision(iid, [], ["*"], "Operator requested revision", {})
     await cl.Message(content=_format_decision_result(resp)).send()
 
