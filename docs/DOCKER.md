@@ -38,9 +38,12 @@ Optional: `export NVIDIA_API_KEY=nvapi-...` in `.env` (not in image).
 cp .env.example .env
 nano .env   # NVIDIA_API_KEY, Langfuse secrets (NEXTAUTH_SECRET, SALT)
 
-make start
+make build      # optional: build app image first
+make start      # up -d --build (builds smart-city-crisis-app:1.0 locally)
 make status
 ```
+
+The app image **`smart-city-crisis-app:1.0` is built from the repo Dockerfile** — it is not on Docker Hub. If you see `pull access denied for smart-city-crisis-app`, pull the latest `docker-compose.yml` (both `api` and `chainlit` must have `build: .`) and run `make build && make start`.
 
 Open:
 
@@ -102,3 +105,5 @@ Production demo for others: **`make start`** only.
 | Chainlit cannot reach API | `API_BASE_URL=http://api:8080` in compose |
 | No traces in Langfuse | Set `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` after project setup |
 | Port conflict | Change `API_PORT`, `CHAINLIT_PORT`, `LANGFUSE_PORT` in `.env` |
+| Chainlit blank page / `project/settings` 500 | Outdated `.chainlit/config.toml` — run `chainlit init` or pull latest repo config; `make build && make restart`. Check logs for `config.toml is outdated`. |
+| Chainlit blank (other) | `docker compose logs chainlit`; ensure `CHAINLIT_URL=http://localhost:7860`; unset `CHAINLIT_ROOT_PATH`; hard-refresh browser |

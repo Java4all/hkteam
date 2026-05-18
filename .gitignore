@@ -49,7 +49,7 @@ coverage.xml
 .pytype/
 
 # --- Chainlit ---
-.chainlit/
+.chainlit/.files/
 .files/
 
 # --- Logs & runtime ---

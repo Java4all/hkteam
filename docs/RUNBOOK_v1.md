@@ -16,6 +16,7 @@ On Ubuntu 22.04, default `python3` is often 3.10. `make prerequisites` installs 
 ```bash
 cp .env.example .env
 nano .env
+make build      # first time: build app image locally
 make start
 make status
 make health

@@ -3,6 +3,11 @@
 
 name: smart-city-crisis
 
+# Shared app image — build locally (never pulled from a registry)
+x-app-image: &app-image
+  build: .
+  image: smart-city-crisis-app:1.0
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -44,8 +49,7 @@ services:
       start_period: 40s
 
   api:
-    build: .
-    image: smart-city-crisis-app:1.0
+    <<: *app-image
     depends_on:
       postgres:
         condition: service_healthy
@@ -71,7 +75,7 @@ services:
       start_period: 20s
 
   chainlit:
-    image: smart-city-crisis-app:1.0
+    <<: *app-image
     depends_on:
       api:
         condition: service_healthy
@@ -80,6 +84,9 @@ services:
     env_file: .env
     environment:
       API_BASE_URL: http://api:8080
+      # Browser URL (port-forward / laptop). Must match what you open in the browser.
+      CHAINLIT_URL: ${CHAINLIT_URL:-http://localhost:7860}
+    working_dir: /app
     command:
       [
         "python",
@@ -91,9 +98,14 @@ services:
         "0.0.0.0",
         "--port",
         "7860",
+        "--headless",
       ]
-    volumes:
-      - ./src/crisis/ui:/app/src/crisis/ui:ro
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:7860/"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 25s
 
 volumes:
   crisis_pg:
