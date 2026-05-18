@@ -106,37 +106,28 @@ fi
 
 # --- .env ---
 check_nvidia_api_key() {
-  local line val
-  line="$(grep -E '^[[:space:]]*NVIDIA_API_KEY=' .env 2>/dev/null | tail -1 || true)"
-  if [[ -z "$line" ]]; then
+  local val
+  val="$(grep -E '^[[:space:]]*NVIDIA_API_KEY=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d ' "'\''\r' || true)"
+  if [[ -z "$val" ]]; then
     warn "NVIDIA_API_KEY missing from .env"
     return
   fi
-  val="${line#NVIDIA_API_KEY=}"
-  val="${val#"${val%%[![:space:]]*}"}"   # trim leading space
-  val="${val%"${val##*[![:space:]]}"}"}" # trim trailing space
-  val="${val%\"}"; val="${val#\"}"
-  val="${val%\'}"; val="${val#\'}"
-  # Placeholders only — real keys also start with nvapi- so do not match that prefix blindly
-  case "$val" in
-    ""|x|nvapi-\.\.\.|nvapi-...|changeme*|your-*|REPLACE*|insert-*)
-      warn "NVIDIA_API_KEY still placeholder in .env (or use CRISIS_USE_MOCK_LLM=true)"
-      ;;
-    *)
-      ok "NVIDIA_API_KEY set in .env"
-      ;;
-  esac
+  if [[ "$val" == "x" || "$val" == "nvapi-..." ]]; then
+    warn "NVIDIA_API_KEY still placeholder in .env - or set CRISIS_USE_MOCK_LLM=true"
+    return
+  fi
+  ok "NVIDIA_API_KEY set in .env"
 }
 
 if [[ -f .env ]]; then
   ok ".env exists"
   if grep -qE '^[[:space:]]*CRISIS_USE_MOCK_LLM=[[:space:]]*true' .env 2>/dev/null; then
-    ok "CRISIS_USE_MOCK_LLM=true (cloud API key optional)"
+    ok "CRISIS_USE_MOCK_LLM=true - cloud API key optional"
   else
     check_nvidia_api_key
   fi
 else
-  warn ".env missing — run: cp .env.example .env"
+  warn ".env missing - run: cp .env.example .env"
 fi
 
 echo ""

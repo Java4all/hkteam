@@ -44,11 +44,11 @@ setup:
 else
 prerequisites-check: ## Check host prerequisites (no sudo)
 	chmod +x scripts/prerequisites.sh
-	./scripts/prerequisites.sh --check
+	bash scripts/prerequisites.sh --check
 
 prerequisites: ## Install/check Ubuntu prerequisites (uses sudo)
 	chmod +x scripts/prerequisites.sh
-	./scripts/prerequisites.sh --install
+	bash scripts/prerequisites.sh --install
 
 setup: prerequisites ## Full first-time setup: apt + .env
 	@test -f .env || cp .env.example .env
