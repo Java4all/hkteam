@@ -9,6 +9,7 @@
 | [AGENTS.md](AGENTS.md) | **Agents** — YAML workflows, action types, catalog |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | **Requirements** — acceptance criteria |
 | [diagrams/](diagrams/README.md) | Mermaid diagrams |
+| [presentation/PRESENTATION_3_SLIDES.md](presentation/PRESENTATION_3_SLIDES.md) | 5-minute presentation (3 slides) |
 | [../data/examples/README.md](../data/examples/README.md) | Example incident text for Chainlit |
 
 ## Stack (one line)

@@ -36,3 +36,4 @@ After first start: Langfuse → project → **API Keys** → add to `.env` → `
 | [docs/TECHNICAL_DESIGN.md](docs/TECHNICAL_DESIGN.md) | Architecture, models, security |
 | [docs/AGENTS.md](docs/AGENTS.md) | Per-agent YAML workflows |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Product requirements (Req 1–15) |
+| [Presentation (3 slides)](docs/presentation/PRESENTATION_3_SLIDES.md) | 5-minute overview deck |
