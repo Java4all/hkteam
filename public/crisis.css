@@ -55,3 +55,112 @@
   background: linear-gradient(90deg, #0891b2, #22d3ee);
   transition: width 0.35s ease;
 }
+
+/* Welcome message (chainlit_app on_chat_start) */
+.crisis-welcome-subtitle {
+  color: #0e7490;
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0.25rem 0 0.75rem;
+  letter-spacing: 0.01em;
+}
+
+.crisis-welcome-section {
+  color: #0891b2;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0.75rem 0 0.35rem;
+  padding-left: 0.65rem;
+  border-left: 3px solid #22d3ee;
+}
+
+.dark .crisis-welcome-subtitle,
+html.dark .crisis-welcome-subtitle {
+  color: #67e8f9;
+}
+
+.dark .crisis-welcome-section,
+html.dark .crisis-welcome-section {
+  color: #22d3ee;
+  border-left-color: #0891b2;
+}
+
+/* Recommendation review cards (no per-item avatar) */
+.crisis-rec-card {
+  margin: 0.25rem 0;
+  padding: 0.65rem 0 0.15rem;
+}
+
+.crisis-rec-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.crisis-rec-body {
+  margin: 0 0 0.5rem;
+  line-height: 1.45;
+  color: inherit;
+  opacity: 0.92;
+}
+
+.crisis-rec-header {
+  margin-bottom: 0.25rem;
+}
+
+/* Hide Chainlit assistant avatar beside recommendation cards */
+[class*="step"]:has(.crisis-rec-card) img[src*="/avatars/"],
+[class*="step"]:has(.crisis-rec-card) [class*="avatar"],
+[class*="message"]:has(.crisis-rec-card) img[src*="/avatars/"] {
+  display: none !important;
+}
+
+[class*="step"]:has(.crisis-rec-header) img[src*="/avatars/"],
+[class*="step"]:has(.crisis-rec-header) [class*="avatar"] {
+  display: none !important;
+}
+
+/* Dispatch simulation (post-submit) */
+.crisis-dispatch-wrap {
+  margin-top: 0.5rem;
+}
+
+.crisis-dispatch-entry {
+  margin: 0.65rem 0;
+  padding: 0.6rem 0 0.6rem 0.75rem;
+  border-left: 3px solid #0891b2;
+  border-radius: 0 4px 4px 0;
+  background: rgba(8, 145, 178, 0.08);
+}
+
+.crisis-dispatch-ref {
+  display: inline-block;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #22d3ee;
+  margin-right: 0.5rem;
+}
+
+.crisis-dispatch-meta {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.crisis-dispatch-detail {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0.25rem 0;
+}
+
+.crisis-dispatch-action {
+  margin: 0.35rem 0 0;
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+
+[class*="step"]:has(.crisis-dispatch-wrap) img[src*="/avatars/"],
+[class*="step"]:has(.crisis-dispatch-wrap) [class*="avatar"] {
+  display: none !important;
+}

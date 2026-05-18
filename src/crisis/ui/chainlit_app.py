@@ -17,6 +17,7 @@ import yaml
 from crisis.agents.display import agent_display_name, format_agent_list
 from crisis.ui.pipeline_animator import PipelineProgressUI
 from crisis.ui.pipeline_display import format_pipeline_stages
+from crisis.ui.dispatch_display import format_dispatch_simulation
 from crisis.ui.review_panel import (
     build_footer_actions,
     build_rec_card_actions,
@@ -157,15 +158,17 @@ async def start():
     await cl.Message(
         content=(
             "## Smart City Crisis Management\n"
-            "**Emergency Operations Center — Incident Analysis Console**\n\n"
+            '<p class="crisis-welcome-subtitle">'
+            "Emergency Operations Center — Incident Analysis Console"
+            "</p>\n\n"
             "This workspace ingests situation reports, coordinates cross-domain "
             "specialist analysis, and produces a consolidated briefing for command staff. "
             "Decisions you record here are retained for audit and after-action review.\n\n"
-            "**Submit an incident**\n"
+            '<p class="crisis-welcome-section">Submit an incident</p>\n'
             "Enter a situation report in the message field below. Place the "
             "**affected location** on the final line (address, intersection, facility, "
             "or operational area).\n\n"
-            "**Command review**\n"
+            '<p class="crisis-welcome-section">Command review</p>\n'
             "When analysis completes, validate each recommendation with "
             "**Approve**, **Reject**, or **Edit**, then select **Submit** to finalize "
             "the incident package.\n\n"
@@ -274,7 +277,10 @@ async def _send_review_panel(iid: str, recs: list[dict]) -> None:
     state = empty_review_state(recs)
     cl.user_session.set(review_session_key(iid), state)
 
-    await cl.Message(content=format_recommendations_header()).send()
+    await cl.Message(
+        content=format_recommendations_header(),
+        tags=["crisis-rec-header"],
+    ).send()
 
     card_msgs: dict[str, cl.Message] = {}
     for i, r in enumerate(recs):
@@ -282,6 +288,7 @@ async def _send_review_panel(iid: str, recs: list[dict]) -> None:
         card = cl.Message(
             content=format_rec_card(i, r, state),
             actions=build_rec_card_actions(iid, rid, i, state),
+            tags=["crisis-rec"],
         )
         await card.send()
         card_msgs[rid] = card
@@ -411,7 +418,7 @@ async def submit_review(action: cl.Action):
         None,
         dict(state["modified"]),
     )
-    await cl.Message(content=_format_decision_result(resp)).send()
+    await _send_decision_messages(resp)
 
 
 @cl.action_callback("approve_all")
@@ -432,7 +439,7 @@ async def approve_all(action: cl.Action):
         r["id"] for r in (row.get("incident_summary") or {}).get("ranked_recommendations", [])
     ]
     resp = await _post_decision(iid, rec_ids, [], None, {})
-    await cl.Message(content=_format_decision_result(resp)).send()
+    await _send_decision_messages(resp)
 
 
 @cl.action_callback("reject_all")
@@ -446,7 +453,7 @@ async def reject_all(action: cl.Action):
         for r in state["recommendations"]:
             await _refresh_rec_card(iid, r["id"])
     resp = await _post_decision(iid, [], ["*"], "Operator requested revision", {})
-    await cl.Message(content=_format_decision_result(resp)).send()
+    await _send_decision_messages(resp)
 
 
 def _format_decision_result(resp: dict) -> str:
@@ -455,9 +462,15 @@ def _format_decision_result(resp: dict) -> str:
         f"**Decision recorded** — status `{resp.get('status', '?')}`\n\n"
         f"- Approved: {summary.get('approved_count', 0)}\n"
         f"- Rejected: {summary.get('rejected_count', 0)}\n"
-        f"- Edited: {summary.get('modified_count', 0)}\n\n"
-        f"_{resp.get('dispatch', 'SIMULATION')}_"
+        f"- Edited: {summary.get('modified_count', 0)}"
     )
+
+
+async def _send_decision_messages(resp: dict) -> None:
+    await cl.Message(content=_format_decision_result(resp)).send()
+    dispatch_block = format_dispatch_simulation(resp.get("dispatch_simulation"))
+    if dispatch_block:
+        await cl.Message(content=dispatch_block, tags=["crisis-dispatch"]).send()
 
 
 async def _get_incident(iid: str):

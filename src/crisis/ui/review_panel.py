@@ -7,14 +7,6 @@ import chainlit as cl
 from crisis.agents.display import agent_display_name
 from crisis.agents.recommendations import agent_id_from_recommendation_id
 
-# Colored action labels (HTML; requires unsafe_allow_html in Chainlit config)
-_ACTION_LINKS = (
-    '<span style="color:#16a34a;font-weight:600">Approve</span> · '
-    '<span style="color:#dc2626;font-weight:600">Reject</span> · '
-    '<span style="color:#2563eb;font-weight:600">Edit</span>'
-)
-
-
 def review_session_key(incident_id: str) -> str:
     return f"review_{incident_id}"
 
@@ -47,7 +39,12 @@ def empty_review_state(recommendations: list[dict]) -> dict[str, Any]:
 
 
 def format_recommendations_header() -> str:
-    return "## Recommendations\n\n_Decide on each item using the buttons below the text._"
+    return (
+        '<div class="crisis-rec-header">'
+        "## Recommendations\n\n"
+        "_Validate each item using the actions below, then Submit._"
+        "</div>"
+    )
 
 
 def format_rec_card(index: int, rec: dict, state: dict[str, Any]) -> str:
@@ -58,9 +55,10 @@ def format_rec_card(index: int, rec: dict, state: dict[str, Any]) -> str:
     action = action.strip().replace("\n", " ")
 
     return (
-        f"**{index + 1}. {specialist}**\n\n"
-        f"{action}\n\n"
-        f"{_ACTION_LINKS}"
+        '<div class="crisis-rec-card">'
+        f'<div class="crisis-rec-title">{index + 1}. {specialist}</div>'
+        f'<p class="crisis-rec-body">{action}</p>'
+        "</div>"
     )
 
 

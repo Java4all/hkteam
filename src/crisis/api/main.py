@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from crisis.dispatch.simulator import simulate_dispatch
 from crisis.pipeline.serialize import incident_response
 from crisis.pipeline.runner import run_incident_pipeline, stream_incident_pipeline
 from crisis.models.schemas import HumanDecision, IncidentReport
@@ -134,12 +135,23 @@ def post_decision(incident_id: str, body: HumanDecisionRequest):
         raise HTTPException(404, detail="Incident not found")
     row = get_incident_store().get(incident_id)
     inc = row["incident"]
-    dispatch_note = "SIMULATION: no external dispatch." if settings.simulation_mode else "Dispatch queued."
+    summary = row.get("incident_summary")
+    recs = summary.ranked_recommendations if summary else []
+    dispatch_sim = simulate_dispatch(
+        incident_id=incident_id,
+        approved_ids=decision.approved_recommendation_ids,
+        recommendations=recs,
+        modified=decision.modified_recommendations,
+        location=inc.location,
+        simulation_mode=settings.simulation_mode,
+    )
+    dispatch_note = dispatch_sim["note"] if settings.simulation_mode else "Dispatch queued."
     return {
         "incident_id": incident_id,
         "status": inc.status.value,
         "decision": decision.model_dump(mode="json"),
         "dispatch": dispatch_note,
+        "dispatch_simulation": dispatch_sim,
         "summary": {
             "approved_count": len(decision.approved_recommendation_ids),
             "rejected_count": len(

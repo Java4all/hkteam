@@ -130,7 +130,7 @@ custom_css = "/public/crisis.css"
 # custom_css_attributes = "media=\"print\""
 
 # Force tab icon (cache-bust; overrides default Chainlit pink favicon)
-custom_js = "/public/crisis-favicon.js"
+custom_js = "/public/crisis-ui.js"
 
 # The style of alert boxes. Can be "classic" or "modern".
 alert_style = "classic"

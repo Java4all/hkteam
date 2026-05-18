@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -U pip \
     && python -m chainlit init \
     && sed -i 's/^name = "Assistant"/name = "Smart City Crisis Management"/' .chainlit/config.toml \
     && sed -i 's|^# custom_css = "/public/test.css"|custom_css = "/public/crisis.css"|' .chainlit/config.toml \
-    && sed -i 's|^# custom_js = "/public/test.js"|custom_js = "/public/crisis-favicon.js"|' .chainlit/config.toml \
+    && sed -i 's|^# custom_js = "/public/test.js"|custom_js = "/public/crisis-ui.js"|' .chainlit/config.toml \
     && python -c "\
 import pathlib, shutil, chainlit; \
 src = pathlib.Path('/app/public/favicon.svg'); \
