@@ -16,13 +16,13 @@ def get_langfuse_config(*, session_id: str | None = None, tags: list[str] | None
         logger.warning("Langfuse enabled but LANGFUSE_PUBLIC_KEY/SECRET_KEY not set — tracing skipped")
         return {}
     try:
-        from langfuse.callback import CallbackHandler
-    except ImportError:
-        try:
-            from langfuse.langchain import CallbackHandler
-        except ImportError as exc:
-            logger.warning("langfuse callback not available: %s", exc)
-            return {}
+        from langfuse.langchain import CallbackHandler
+    except ImportError as exc:
+        logger.warning(
+            "langfuse callback not available (%s). Install: pip install langchain langfuse",
+            exc,
+        )
+        return {}
 
     handler = CallbackHandler(
         public_key=settings.langfuse_public_key,

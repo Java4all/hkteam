@@ -62,6 +62,8 @@ It consolidates product requirements, architecture decisions from design reviews
 
 ## 3. Architecture overview
 
+**Deployment containers (v1.0):** four Docker services (`postgres`, `langfuse`, `api`, `chainlit`) — roles, ports, and traffic flows are in **§12.2**.
+
 ### 3.1 Layered system
 
 ```text
@@ -711,11 +713,123 @@ Retention: 90 days minimum (Req 13.4).
             [Vector DB: Knowledge Base]   [NIM fleet local/cloud]
 ```
 
-### 12.2 Docker Compose (dev)
+### 12.2 Docker Compose containers (v1.0)
 
-Services: `api`, `chainlit`, `postgres`, `langfuse`, `nim` (optional).
+v1.0 runs as **four containers** on a single Docker host (`docker compose up`, `make start`). There is **no separate NIM container** in the default stack — the `api` service calls **NVIDIA cloud** over HTTPS (`integrate.api.nvidia.com`). Optional local NIM is documented in §8.1.2 and runs outside this compose file if needed.
 
-Chainlit calls the FastAPI backend for incident submit, summary display, and approve/reject actions. Langfuse receives traces from the API process.
+#### 12.2.1 Container map
+
+```mermaid
+flowchart TB
+  subgraph host["Docker host (Ubuntu / Brev)"]
+    subgraph net["Compose network: smart-city-crisis_default"]
+      PG[(postgres<br/>:5432)]
+      LF[langfuse<br/>:3000]
+      API[api<br/>:8080]
+      CL[chainlit<br/>:7860]
+    end
+  end
+
+  OP[Operator browser]
+  NIM[NVIDIA NIM cloud<br/>HTTPS]
+
+  OP -->|7860 Chainlit UI| CL
+  OP -->|8080 REST optional| API
+  OP -->|3000 traces UI| LF
+
+  CL -->|HTTP API_BASE_URL| API
+  API -->|DATABASE_URL| PG
+  API -->|LANGFUSE_HOST traces| LF
+  LF -->|DATABASE_URL langfuse DB| PG
+  API -->|NVIDIA_API_KEY| NIM
+
+  VOL[(crisis_pg volume)]
+  PG --- VOL
+```
+
+#### 12.2.2 Container roles
+
+| Container | Image | Port (host) | Role in application design |
+|-----------|--------|-------------|----------------------------|
+| **postgres** | `postgres:16-alpine` | 5432 | **Persistence layer.** Database `crisis` stores incidents, decisions, and audit fields written by the API. Second logical DB `langfuse` (created by init script) stores Langfuse metadata. Survives restarts via volume `crisis_pg`. |
+| **langfuse** | `langfuse/langfuse:2` | 3000 | **Observability platform (O1).** Self-hosted trace UI and ingestion API. Operators create a project and API keys here; keys go in `.env` so the **api** process can emit LangGraph/LLM spans. Does not run agents or business logic. |
+| **api** | `smart-city-crisis-app:1.0` (built locally) | 8080 | **Core application runtime.** FastAPI + LangGraph incident orchestrator: intake, classify, Smart Router, specialist fan-out, aggregate, critic. Reads `configs/` and `data/` (mounted read-only). Persists to Postgres. Calls NVIDIA cloud per `LLM_PROFILE`. Exposes `/health`, `/incidents`, decision endpoints. |
+| **chainlit** | `smart-city-crisis-app:1.0` (same image, different command) | 7860 | **Operator console (O2).** Thin presentation tier: chat UI, demo starters, approve/reject actions. Forwards incident text to **api** via `API_BASE_URL=http://api:8080`. Does not call LLMs or Postgres directly. |
+
+**Shared image:** `api` and `chainlit` use one Dockerfile (`smart-city-crisis-app:1.0`). Only the container **command** differs (uvicorn vs `chainlit run`). Rebuild with `make build` after code or dependency changes.
+
+#### 12.2.3 Startup order and health
+
+```mermaid
+flowchart LR
+  PG[postgres healthy]
+  LF[langfuse started]
+  API[api healthy]
+  CL[chainlit healthy]
+
+  PG --> LF
+  PG --> API
+  LF --> API
+  API --> CL
+```
+
+| Step | Condition | Why |
+|------|-----------|-----|
+| 1 | `postgres` healthy (`pg_isready`) | Langfuse and API need a database |
+| 2 | `langfuse` started | API enables tracing when `LANGFUSE_ENABLED=true` |
+| 3 | `api` healthy (`GET /health`) | Chainlit depends on backend for every incident |
+| 4 | `chainlit` healthy (`GET /project/settings`) | UI ready when settings JSON returns 200 |
+
+#### 12.2.4 Traffic and trust boundaries
+
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│  External (operator laptop via port-forward / SSH tunnel)                 │
+│    :7860 Chainlit  :8080 API  :3000 Langfuse                              │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼──────────────────────────────────────────┐
+│  chainlit          Presentation only — no .env secrets for Langfuse/DB    │
+│       │ HTTP (internal DNS: api:8080)                                     │
+│       ▼                                                                   │
+│  api               Business logic + LangGraph + LLM egress to NVIDIA      │
+│       │                    │                                              │
+│       │                    └──► https://integrate.api.nvidia.com/v1       │
+│       ├──► postgres:5432/crisis                                           │
+│       └──► langfuse:3000 (trace ingest)                                   │
+│                                                                           │
+│  langfuse          Auth UI + trace store — uses postgres DB `langfuse`    │
+│  postgres          Single engine, two databases (crisis + langfuse)       │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+| Boundary | Rule |
+|----------|------|
+| Operator → Chainlit | Browser only; simulation mode blocks real dispatch at API layer |
+| Chainlit → API | Server-side HTTP on compose network; no direct DB access |
+| API → Postgres | `DATABASE_URL`; incident CRUD and status |
+| API → Langfuse | Optional until `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` set; app runs without traces |
+| API → NVIDIA | Outbound HTTPS; `NVIDIA_API_KEY` from `.env` (api service only) |
+
+#### 12.2.5 Config and data mounts (api container)
+
+| Mount | Purpose |
+|-------|---------|
+| `./configs` → `/app/configs` | Smart routing, per-agent workflows, `LLM_PROFILE` YAML |
+| `./data` → `/app/data` | Knowledge base, utilities catalog, `data/examples/` demo incidents |
+| `.env` (compose `env_file`) | Secrets and feature flags for **api** only |
+
+Chainlit receives only `API_BASE_URL`, `CHAINLIT_URL`, and `PYTHONUNBUFFERED` — not the full `.env` — to avoid breaking the Chainlit settings endpoint.
+
+#### 12.2.6 Optional components (not in default compose)
+
+| Component | v1.0 | Notes |
+|-----------|------|-------|
+| **Local NIM** | Optional | Separate GPU process or container on `:8000`; map via `configs/llm/local.yaml` |
+| **Vector DB** | Future | Knowledge base today is file-based under `data/` |
+| **NAT runner** | P3 | Tool workflows; not in v1.0 compose |
+
+See `docs/DOCKER.md` and `docker-compose.yml` for ports, health checks, and operations.
 
 ### 12.3 Environments
 

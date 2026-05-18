@@ -25,6 +25,10 @@ make stop
 make restart
 ```
 
+## Langfuse tracing
+
+The API uses `langfuse.langchain.CallbackHandler` (requires the **`langchain`** package in the Docker image). If logs show `langfuse callback not available`, run `make build --no-cache api && make restart`.
+
 ## Langfuse keys (required for tracing)
 
 1. http://localhost:3000 → create account & project  
