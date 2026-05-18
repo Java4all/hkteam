@@ -395,35 +395,40 @@ async def submit_review(action: cl.Action):
 async def approve_all(action: cl.Action):
     iid = action.payload.get("id") or cl.user_session.get("incident_id")
     state = _get_review_state(iid)
-    if state:
-        state["approved"] = [r["id"] for r in state["recommendations"]]
-        state["rejected"] = []
-        cl.user_session.set(review_session_key(iid), state)
-        for r in state["recommendations"]:
-            await _refresh_rec_card(iid, r["id"])
-    row = await _get_incident(iid)
-    if not row:
-        await cl.Message(content="Incident not found.").send()
+    if not state:
+        await cl.Message(content="Session expired.").send()
         return
-    rec_ids = [
-        r["id"] for r in (row.get("incident_summary") or {}).get("ranked_recommendations", [])
-    ]
-    resp = await _post_decision(iid, rec_ids, [], None, {})
-    await _send_decision_messages(resp)
+    state["approved"] = [r["id"] for r in state["recommendations"]]
+    state["rejected"] = []
+    cl.user_session.set(review_session_key(iid), state)
+    for r in state["recommendations"]:
+        await _refresh_rec_card(iid, r["id"])
+    await cl.Message(
+        content=(
+            f"**All {len(state['approved'])} recommendations marked approved.** "
+            "Select **Submit** when ready to finalize."
+        )
+    ).send()
 
 
 @cl.action_callback("reject_all")
 async def reject_all(action: cl.Action):
     iid = action.payload.get("id") or cl.user_session.get("incident_id")
     state = _get_review_state(iid)
-    if state:
-        state["rejected"] = [r["id"] for r in state["recommendations"]]
-        state["approved"] = []
-        cl.user_session.set(review_session_key(iid), state)
-        for r in state["recommendations"]:
-            await _refresh_rec_card(iid, r["id"])
-    resp = await _post_decision(iid, [], ["*"], "Operator requested revision", {})
-    await _send_decision_messages(resp)
+    if not state:
+        await cl.Message(content="Session expired.").send()
+        return
+    state["rejected"] = [r["id"] for r in state["recommendations"]]
+    state["approved"] = []
+    cl.user_session.set(review_session_key(iid), state)
+    for r in state["recommendations"]:
+        await _refresh_rec_card(iid, r["id"])
+    await cl.Message(
+        content=(
+            f"**All {len(state['rejected'])} recommendations marked rejected.** "
+            "Select **Submit** when ready to finalize."
+        )
+    ).send()
 
 
 def _format_decision_result(resp: dict) -> str:
