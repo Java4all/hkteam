@@ -1,0 +1,37 @@
+agent_id: public_safety
+role: eoc_safety_liaison
+display_name: Public Safety Specialist
+
+workflow_selection:
+  default: public_safety_restricted
+
+workflows:
+  public_safety_restricted:
+    description: Crowd / safety — template-driven, minimal LLM
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [public_safety, crowd] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]
+
+  public_safety_critical:
+    description: High-severity public safety with comms subagent
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [public_safety, critical] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]
+      - id: comms
+        type: subagent
+        params:
+          agent_id: comms
+          workflow: comms_standard
+        depends_on: [analyze]

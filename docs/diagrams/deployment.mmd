@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph gpu["NVIDIA GPU instance (Ubuntu) — Docker Compose"]
+    subgraph compose["smart-city-crisis network"]
+      CL[chainlit :7860]
+      API[api :8080]
+      PG[(postgres :5432)]
+      LF[langfuse :3000]
+      LFW[langfuse-worker]
+      CH[(clickhouse)]
+      RD[(redis)]
+      MN[(minio)]
+    end
+  end
+
+  OP[Operator browser]
+  CLOUD[NVIDIA integrate API<br/>integrate.api.nvidia.com/v1]
+
+  OP -->|port-forward or public IP| CL
+  OP -->|optional| LF
+  CL -->|API_BASE_URL| API
+  API --> PG
+  API --> LF
+  LF --> PG
+  LF --> CH
+  LF --> RD
+  LF --> MN
+  LFW --> PG
+  API -->|NVIDIA_API_KEY HTTPS| CLOUD

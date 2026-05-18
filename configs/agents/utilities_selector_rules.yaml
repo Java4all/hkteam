@@ -1,0 +1,8 @@
+rules:
+  - if: workflow_override is not null
+    then: ${workflow_override}
+
+  - if: any(hints, [hospital, medical, clinic])
+    then: utilities_hospital_priority
+
+default: utilities_standard

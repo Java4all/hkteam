@@ -1,0 +1,11 @@
+rules:
+  - if: workflow_override is not null
+    then: ${workflow_override}
+
+  - if: any(hints, [ransomware, emr, breach])
+    then: cyber_containment
+
+  - if: severity in [LOW, MEDIUM]
+    then: cyber_monitoring
+
+default: cyber_containment

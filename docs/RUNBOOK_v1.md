@@ -1,6 +1,8 @@
 # Runbook — Smart City Crisis Management v1.0
 
-**Primary:** [DOCKER.md](DOCKER.md) — `make start`
+**Deployment:** NVIDIA GPU instance · **Docker Compose only** · [DOCKER.md](DOCKER.md)
+
+**Primary command:** `make start`
 
 ## Prerequisites (Ubuntu)
 
@@ -44,12 +46,17 @@ curl -s http://127.0.0.1:8080/health | python3 -m json.tool   # check langfuse.a
 
 ```env
 NVIDIA_API_KEY=nvapi-...
+LLM_PROFILE=multimodel
+CRISIS_MAX_SUBAGENT_DEPTH=2
 DATABASE_URL=postgresql://crisis:crisis@postgres:5432/crisis
 LANGFUSE_ENABLED=true
 LANGFUSE_HOST=http://langfuse:3000
 LANGFUSE_NEXTAUTH_SECRET=...   # min 32 chars
 LANGFUSE_SALT=...              # min 32 chars
+SIMULATION_MODE=true
 ```
+
+Agent and model reference: [AGENTS.md](AGENTS.md) · [TECHNICAL_DESIGN.md §8](TECHNICAL_DESIGN.md).
 
 ## Host tests (no Docker)
 

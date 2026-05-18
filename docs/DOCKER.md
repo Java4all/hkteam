@@ -1,104 +1,117 @@
 # Docker deployment — v1.0 (mandatory stack)
 
-v1.0 runs as **Docker Compose** with these **required** services:
+**Target environment:** NVIDIA GPU cloud instance (Ubuntu 22.04+, e.g. Brev). The full application runs as **Docker Compose** — no bare-metal `uvicorn` for production demos.
+
+LLM inference uses **NVIDIA cloud** from inside the `api` container (`https://integrate.api.nvidia.com/v1` + `NVIDIA_API_KEY`).
+
+## Services
 
 | Service | Port | Role |
 |---------|------|------|
-| **postgres** | 5432 | Incident persistence (JSONB) |
-| **langfuse** | 3000 | Observability UI + trace API |
-| **api** | 8080 | FastAPI + LangGraph |
+| **postgres** | 5432 | Incident DB + Langfuse DB |
+| **clickhouse** | — | Langfuse v3 analytics |
+| **redis** | — | Langfuse v3 queue |
+| **minio** | — | Langfuse v3 object storage |
+| **langfuse-worker** | — | Langfuse background worker |
+| **langfuse** | 3000 | Trace UI + ingestion API |
+| **api** | 8080 | FastAPI + LangGraph + LLM client |
 | **chainlit** | 7860 | Operator console |
 
-LLM inference still uses **NVIDIA cloud** from inside the `api` container (HTTPS egress).
+Diagram: [diagrams/deployment.mmd](diagrams/deployment.mmd)
 
-## Prerequisites (Ubuntu host)
+## Prerequisites (GPU instance host)
 
 ```bash
 make prerequisites-check   # verify only
-make prerequisites         # apt install + docker group + .env template
+make prerequisites         # apt packages + docker group + .env template
 ```
 
-**Brev / Docker CE images:** Docker is often pre-installed. Do **not** run `apt install docker.io` — it conflicts with `containerd.io`. Use `make prerequisites-check`; if Docker works, go straight to `make start`.
-
-Or manually (only if Docker is missing):
-
-```bash
-sudo apt update
-sudo apt install -y make curl git python3 python3-venv python3-pip
-# only if docker command is missing:
-# sudo apt install -y docker.io docker-compose-plugin
-sudo usermod -aG docker $USER
-```
-
-Optional: `export NVIDIA_API_KEY=nvapi-...` in `.env` (not in image).
+**Brev / Docker CE:** Docker is often pre-installed. Do **not** run `apt install docker.io` if `containerd.io` is already present — use `make prerequisites-check` and go to `make start` when Docker works.
 
 ## First start
 
 ```bash
 cp .env.example .env
-nano .env   # NVIDIA_API_KEY, Langfuse secrets (NEXTAUTH_SECRET, SALT)
+nano .env   # NVIDIA_API_KEY, Langfuse secrets (NEXTAUTH_SECRET, SALT, ENCRYPTION_KEY)
 
-make build      # optional: build app image first
-make start      # up -d --build (builds smart-city-crisis-app:1.0 locally)
+make build      # build smart-city-crisis-app:1.0 locally
+make start      # up -d --build
 make status
 ```
 
-The app image **`smart-city-crisis-app:1.0` is built from the repo Dockerfile** — it is not on Docker Hub. If you see `pull access denied for smart-city-crisis-app`, pull the latest `docker-compose.yml` (both `api` and `chainlit` must have `build: .`) and run `make build && make start`.
+The image **`smart-city-crisis-app:1.0` is built from this repo** — not pulled from a registry. If you see `pull access denied`, ensure `docker-compose.yml` has `build: .` on `api` and `chainlit`.
 
-Open:
+### Access from your laptop
 
-- Chainlit: http://\<host\>:7860
-- Langfuse: http://\<host\>:3000
-- API: http://\<host\>:8080/health
+```bash
+# Brev
+brev port-forward <instance> --port 7860:7860 --port 8080:8080 --port 3000:3000
+
+# SSH
+ssh -L 7860:127.0.0.1:7860 -L 8080:127.0.0.1:8080 -L 3000:127.0.0.1:3000 user@gpu-host
+```
+
+| URL | Service |
+|-----|---------|
+| http://localhost:7860 | Chainlit |
+| http://localhost:8080/health | API |
+| http://localhost:3000 | Langfuse |
+
+Set `CHAINLIT_URL` in `.env` to the URL you use in the browser (e.g. `http://localhost:7860` when port-forwarding).
 
 ## Langfuse API keys (one-time)
 
-**API keys are project-scoped.** The URL  
-`/organization/.../settings` is **organization** settings (members, billing) — there is **no API Keys tab** there.
+API keys are **project-scoped** (not under Organization → Settings).
 
-### Option A — UI (existing org)
+### Option A — UI
 
-1. Open http://localhost:3000 (not the organization settings URL).
-2. In the **left sidebar**, select a **project** (or click **+ New project**).
-3. Open **project** **Settings** (gear while inside the project, not org settings).
-4. Open **API Keys** → create or copy **public** + **secret** from the **same** row.
-5. Paste into `.env` (no quotes), then `make restart`.
+1. Open http://localhost:3000
+2. Select or create a **project** (sidebar)
+3. Project **Settings** → **API Keys**
+4. Copy public + secret into `.env` → `make restart`
 
-When you **create a new project**, Langfuse shows the key pair once in a dialog — copy it immediately.
+### Option B — Headless bootstrap (empty DB)
 
-### Option B — Headless bootstrap (fresh Langfuse DB)
-
-Set in `.env` (uncomment and align public/secret with `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`):
-
-```env
-LANGFUSE_INIT_ORG_ID=crisis-demo
-LANGFUSE_INIT_PROJECT_ID=crisis
-LANGFUSE_INIT_PROJECT_PUBLIC_KEY=pk-lf-...
-LANGFUSE_INIT_PROJECT_SECRET_KEY=sk-lf-...
-LANGFUSE_INIT_USER_EMAIL=admin@example.com
-LANGFUSE_INIT_USER_PASSWORD=ChangeMe123!
-LANGFUSE_PUBLIC_KEY=pk-lf-...   # same as INIT public key
-LANGFUSE_SECRET_KEY=sk-lf-...   # same as INIT secret key
-```
-
-Then recreate Langfuse (only if you can wipe or use a new DB):
+See `.env.example` `LANGFUSE_INIT_*` variables and [RUNBOOK_v1.md](RUNBOOK_v1.md).
 
 ```bash
-docker compose --env-file .env up -d --force-recreate langfuse langfuse-worker
 make verify-langfuse-keys
+make test-langfuse
 ```
 
-Until keys are set, the app runs but tracing is skipped (warning in API logs).
+## Environment essentials
+
+```env
+NVIDIA_API_KEY=nvapi-...
+LLM_PROFILE=multimodel
+NIM_CLOUD_BASE_URL=https://integrate.api.nvidia.com/v1
+DATABASE_URL=postgresql://crisis:crisis@postgres:5432/crisis
+LANGFUSE_HOST=http://langfuse:3000
+LANGFUSE_PUBLIC_KEY=pk-lf-...
+LANGFUSE_SECRET_KEY=sk-lf-...
+CRISIS_MAX_SUBAGENT_DEPTH=2
+SIMULATION_MODE=true
+```
+
+Inside Docker, use service hostnames (`postgres`, `langfuse`, `api`) — not `localhost` — in `DATABASE_URL` and `LANGFUSE_HOST`.
 
 ## Commands
 
 ```bash
-make start      # up -d --build
-make stop       # compose down
+make start
+make stop
 make restart
 make logs
 make health
-make clean      # down -v (deletes DB volume)
+make verify-nvidia-api
+make clean      # down -v (deletes DB volumes)
+```
+
+After code or `public/` UI changes:
+
+```bash
+docker compose --env-file .env build api chainlit
+docker compose --env-file .env up -d --force-recreate api chainlit
 ```
 
 ## Architecture
@@ -106,34 +119,28 @@ make clean      # down -v (deletes DB volume)
 ```text
 [Browser] → chainlit:7860 → api:8080 → postgres
                               ↓
-                         NVIDIA cloud LLM
+                    NVIDIA cloud (integrate.api.nvidia.com)
                               ↓
-                         langfuse:3000
+                    langfuse:3000 (+ clickhouse, redis, minio)
 ```
 
-## Host development (optional)
+## Host development (optional, not production)
 
 ```bash
 make install
-make test          # mock LLM, no Docker
-CRISIS_USE_MOCK_LLM=true make demo
+CRISIS_USE_MOCK_LLM=true make test
 ```
-
-Production demo for others: **`make start`** only.
 
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
-| `langfuse` unhealthy but curl `/api/public/health` OK | False alarm from old wget healthcheck — `git pull` and `docker compose up -d --force-recreate langfuse` |
-| Langfuse crash `Region is missing` / S3 upload failed | Set `LANGFUSE_S3_EVENT_UPLOAD_REGION=auto` and `LANGFUSE_S3_MEDIA_UPLOAD_REGION=auto` (in compose); recreate `minio` + `langfuse` |
-| API error `[404] Not Found` on `integrate.api.nvidia.com` | Set valid `NVIDIA_API_KEY` in `.env`; enable models on [build.nvidia.com](https://build.nvidia.com/); `make verify-nvidia-api`; or `CRISIS_USE_MOCK_LLM=true` |
-| API cannot reach postgres | `DATABASE_URL` must use host `postgres` inside Docker |
-| Chainlit cannot reach API | `API_BASE_URL=http://api:8080` in compose |
-| No traces in Langfuse | Set `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` after project setup |
-| `langfuse callback not available` / install langchain | Rebuild API image: `make build --no-cache api` (needs `langchain` package for Langfuse callback) |
-| No traces in Langfuse UI | Use **Langfuse v3** stack in compose (not `langfuse:2`); set API keys in `.env`; run `make test-langfuse`; submit incident; check **Traces** (not only Sessions) |
-| `auth_ok: false` on `/health` | Regenerate project keys in Langfuse UI; `LANGFUSE_HOST=http://langfuse:3000` inside Docker |
-| Port conflict | Change `API_PORT`, `CHAINLIT_PORT`, `LANGFUSE_PORT` in `.env` |
-| Chainlit blank page / `project/settings` 500 | Run `make diagnose-chainlit`. Then **`make build` with no cache** and `make restart` (image runs `chainlit init` at build). Ensure `.env` has no bad `CHAINLIT_ROOT_PATH`. Chainlit service no longer loads full `.env`. |
-| Chainlit blank (other) | `docker compose logs chainlit`; ensure `CHAINLIT_URL=http://localhost:7860`; unset `CHAINLIT_ROOT_PATH`; hard-refresh browser |
+| `langfuse` unhealthy but `/api/public/health` OK | `git pull`; recreate langfuse service |
+| Langfuse `Region is missing` / S3 errors | `LANGFUSE_S3_*_REGION=auto` in compose; recreate minio + langfuse |
+| NVIDIA `[404] Not Found` | Valid `NVIDIA_API_KEY`; enable models on build.nvidia.com; `make verify-nvidia-api` |
+| API cannot reach postgres | `DATABASE_URL` host must be `postgres` in Docker |
+| Chainlit blank / settings 500 | `make diagnose-chainlit`; rebuild chainlit without cache; check `CHAINLIT_URL` |
+| No traces | Langfuse **v3** stack; set project keys; `make test-langfuse` |
+| Duplicate review buttons | Hard-refresh browser; ensure latest `public/crisis-ui.js` mounted |
+
+See also [UBUNTU.md](UBUNTU.md) and [TECHNICAL_DESIGN.md §12](TECHNICAL_DESIGN.md).

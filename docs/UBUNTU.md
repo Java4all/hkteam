@@ -1,4 +1,6 @@
-# Ubuntu setup — Smart City Crisis Management v1.0
+# GPU instance host setup — Smart City Crisis Management v1.0
+
+Use this guide to prepare an **NVIDIA GPU cloud instance** (Ubuntu 22.04+) before running the **Docker Compose** stack. Production and demos use **`make start` only** — not host-run API/Chainlit.
 
 ## 1. System packages
 
@@ -7,112 +9,96 @@ make prerequisites-check
 make prerequisites
 ```
 
-This installs: `docker.io`, `docker-compose-plugin`, `make`, `curl`, `git`, `python3`, `python3-venv`, `python3-pip`, enables Docker, and creates `.env` from `.env.example`.
+Installs (when needed): Docker Compose plugin, `make`, `curl`, `git`, Python 3.12 for optional host tests. Creates `.env` from `.env.example`.
 
-Manual equivalent:
+**Do not** install `docker.io` on images that already have Docker CE / `containerd.io` (common on Brev) — see [RUNBOOK_v1.md](RUNBOOK_v1.md).
 
-```bash
-sudo apt update
-sudo apt install -y python3 python3-venv python3-pip make curl git docker.io docker-compose-plugin
-```
+Python **3.11+** is required only for optional host `make install` / `make test`. The Docker stack does not need host Python.
 
-Python **3.11+** is required. Check:
-
-```bash
-python3 --version
-```
-
-`make prerequisites` installs **Python 3.12 only when needed** (no 3.11+ on the host). If `python3.11` or `python3.12` is already present, it skips Python packages. It writes `.preferred-python` for `make install`.
-
-Manual install:
-
-```bash
-sudo apt install -y python3.12 python3.12-venv
-# or on older Ubuntu:
-sudo add-apt-repository -y ppa:deadsnakes/ppa && sudo apt update
-sudo apt install -y python3.12 python3.12-venv
-```
-
-## 2. Clone / enter project
+## 2. Clone project
 
 ```bash
 cd ~/hkteam   # your clone path
+cp .env.example .env
+nano .env     # NVIDIA_API_KEY=nvapi-...
 ```
 
-## 3. Install application
+## 3. Start stack (production path)
+
+```bash
+make build
+make start
+make health
+```
+
+| Service | URL on instance |
+|---------|-----------------|
+| Chainlit | http://127.0.0.1:7860 |
+| API | http://127.0.0.1:8080/health |
+| Langfuse | http://127.0.0.1:3000 |
+
+## 4. Access from your laptop
+
+Port-forward (recommended):
+
+```bash
+# Brev
+brev port-forward <instance> --port 7860:7860 --port 8080:8080 --port 3000:3000
+
+# SSH
+ssh -L 7860:127.0.0.1:7860 -L 8080:127.0.0.1:8080 -L 3000:127.0.0.1:3000 user@your-gpu-host
+```
+
+Open http://localhost:7860 on your laptop. Set in `.env`:
+
+```env
+CHAINLIT_URL=http://localhost:7860
+LANGFUSE_NEXTAUTH_URL=http://localhost:3000
+```
+
+## 5. NVIDIA API key
+
+1. Create key at [build.nvidia.com](https://build.nvidia.com/)
+2. Set `NVIDIA_API_KEY` in `.env`
+3. Enable each model listed in `configs/llm/multimodel.yaml`
+4. `make verify-nvidia-api`
+
+## 6. Optional: host tests (no Docker)
 
 ```bash
 make install
-cp .env.example .env
-nano .env     # set NVIDIA_API_KEY=nvapi-...
+CRISIS_USE_MOCK_LLM=true make test
 ```
 
-## 4. Run
+## 7. Optional: local NIM on same GPU host
 
-```bash
-make demo      # quick terminal demo (uses cloud if key set)
-make start     # API http://127.0.0.1:8080 + Chainlit http://127.0.0.1:7860
-make status
-make health
-make logs      # Ctrl+C to exit tail
-make stop
-make restart
-```
-
-## 5. Open from another machine (GPU cloud instance)
-
-If the app binds to `127.0.0.1` only, use SSH port forwarding:
-
-```bash
-ssh -L 8080:127.0.0.1:8080 -L 7860:127.0.0.1:7860 user@your-gpu-host
-```
-
-Then open `http://127.0.0.1:7860` on your laptop.
-
-To listen on all interfaces (lab only), change start scripts or run manually:
-
-```bash
-.venv/bin/python -m uvicorn crisis.api.main:app --host 0.0.0.0 --port 8080
-```
-
-## 6. Offline demo (no NVIDIA API key)
-
-```bash
-export CRISIS_USE_MOCK_LLM=true
-make demo
-make test
-```
-
-## 7. Optional: local NIM on the same Ubuntu GPU host
-
-Run NVIDIA NIM container on port `8000`, then in `configs/llm/multimodel.yaml` assign agents to `local_llama_8b` and set in `.env`:
+Not part of default compose. Run a NIM container on port `8000`, then:
 
 ```env
 NIM_LOCAL_BASE_URL=http://127.0.0.1:8000/v1
 ```
 
-## 8. Optional: Langfuse (Docker)
+Reassign agents to `local_llama_8b` in `configs/llm/multimodel.yaml` or use `LLM_PROFILE=local`. The `api` container must reach the host gateway (platform-specific).
+
+## 8. Firewall
+
+Only open ports if you intentionally expose services (use TLS in production):
 
 ```bash
-# follow Langfuse self-host docs, then in .env:
-LANGFUSE_ENABLED=true
-LANGFUSE_HOST=http://127.0.0.1:3000
-make restart
-```
-
-## 9. Firewall (if enabled)
-
-```bash
-sudo ufw allow 8080/tcp   # only if exposing API publicly (not recommended without TLS)
 sudo ufw allow 7860/tcp
+sudo ufw allow 8080/tcp
+sudo ufw allow 3000/tcp
 ```
+
+Prefer SSH/Brev port-forward instead of public exposure.
 
 ## Troubleshooting
 
 | Issue | Fix |
 |-------|-----|
 | `make: command not found` | `sudo apt install make` |
-| `venv` fails | `sudo apt install python3-venv` |
-| Port in use | `make stop` or `sudo lsof -i :8080` |
-| Cloud LLM errors | Check `NVIDIA_API_KEY` in `.env`, model IDs in `configs/llm/multimodel.yaml` |
-| Chainlit cannot reach API | `API_BASE_URL=http://127.0.0.1:8080` in `.env` |
+| Docker permission denied | `sudo usermod -aG docker $USER` and re-login |
+| `containerd.io` conflict | Skip `make prerequisites` docker install; use existing Docker |
+| Cloud LLM errors | `NVIDIA_API_KEY`, `make verify-nvidia-api` |
+
+Next: [DOCKER.md](DOCKER.md) · [RUNBOOK_v1.md](RUNBOOK_v1.md)

@@ -13,7 +13,6 @@ display_name: Flood Response Specialist
 #   # model: meta/llama-3.1-70b-instruct   # inline override (same cloud base_url)
 
 workflow_selection:
-  mode: hybrid
   default: flood_standard
   rules_file: flood_selector_rules.yaml
 
@@ -37,17 +36,21 @@ workflows:
         type: tool
         skill: playbook_rag
         params: { tags: [flood, evacuation] }
-      - id: weather
-        type: tool
-        skill: weather_api
-      - id: zone
-        type: tool
-        skill: flood_zone_gis
+      - id: context
+        type: parallel
+        params:
+          steps:
+            - id: weather
+              type: tool
+              skill: weather_api
+            - id: zone
+              type: tool
+              skill: flood_zone_gis
         depends_on: [kb]
       - id: analyze
         type: llm
         skill: draft_recommendation
-        input_from: [kb, weather, zone]
+        input_from: [kb, context]
         output_schema: FloodAnalysisOutput
       - id: verify
         type: critic
@@ -67,3 +70,10 @@ workflows:
   flood_dam_breach:
     inherits: flood_critical
     description: Dam or levee breach — highest priority playbook
+    actions:
+      - id: comms
+        type: subagent
+        params:
+          agent_id: comms
+          workflow: comms_standard
+        depends_on: [analyze]

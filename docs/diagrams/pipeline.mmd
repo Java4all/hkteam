@@ -1,0 +1,30 @@
+flowchart TB
+  subgraph ui["Operator UI"]
+    CL[Chainlit]
+  end
+
+  subgraph api["API + LangGraph"]
+    INT[Intake]
+    CLS[Classify]
+    SR[Smart Router]
+    FAN[Parallel specialists]
+    AGG[Aggregator]
+    CRT[Critic]
+    HITL[Human review]
+    DSP[Dispatch simulation]
+  end
+
+  CL -->|POST /incidents/stream SSE| INT
+  INT --> CLS --> SR --> FAN
+  FAN --> AGG --> CRT --> HITL
+  HITL -->|Submit approved| DSP
+
+  subgraph agents["Specialists (0–4 parallel)"]
+    A1[flood]
+    A2[utilities]
+    A3[cyber]
+    An[...]
+  end
+
+  FAN --> A1 & A2 & A3 & An
+  A1 & A2 & A3 & An --> AGG

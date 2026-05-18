@@ -1,0 +1,19 @@
+agent_id: general
+role: fallback_analyst
+display_name: General Crisis Analyst
+
+workflow_selection:
+  default: general_triage
+
+workflows:
+  general_triage:
+    description: Fallback triage when category is unclear
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [general] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]

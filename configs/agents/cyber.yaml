@@ -1,0 +1,32 @@
+agent_id: cyber
+role: cyber_coordinator
+display_name: Cyber Incident Specialist
+
+workflow_selection:
+  default: cyber_containment
+  rules_file: cyber_selector_rules.yaml
+
+workflows:
+  cyber_containment:
+    description: Contain and assess cyber incident
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [cyber, ransomware] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]
+
+  cyber_monitoring:
+    description: Lower-severity monitoring and hardening
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [cyber] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]

@@ -1,0 +1,20 @@
+flowchart TB
+  HO[RouterHandoff from Smart Router]
+  SEL[select_workflow<br/>YAML rules + defaults]
+  WF[run_agent_workflow]
+
+  HO --> SEL --> WF
+
+  subgraph actions["Workflow actions per agent"]
+    T[tool: playbook_rag, weather, ...]
+    P[parallel: concurrent tools]
+    L[llm: draft_recommendation]
+    C[critic]
+    R[rule]
+    SA[subagent: child agent workflow]
+    NAT[nat_workflow: future NAT]
+  end
+
+  WF --> actions
+  SA -->|invoke| CHILD[Another agent YAML workflow]
+  actions --> OUT[SpecialistOutput]

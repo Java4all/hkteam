@@ -1,0 +1,19 @@
+agent_id: infrastructure
+role: infrastructure_coordinator
+display_name: Infrastructure Specialist
+
+workflow_selection:
+  default: infra_standard
+
+workflows:
+  infra_standard:
+    description: Roads, bridges, critical infrastructure
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [infrastructure, bridge] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]

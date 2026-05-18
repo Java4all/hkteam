@@ -19,6 +19,59 @@
     "Undo Reject": "#dc2626",
   };
 
+  function syncRecCardActions() {
+    document.querySelectorAll(".crisis-rec-card").forEach(function (card) {
+      var root =
+        card.closest('[class*="step"]') ||
+        card.closest('[class*="message"]') ||
+        card.parentElement;
+      if (!root) return;
+
+      var buttons = [];
+      root.querySelectorAll("button").forEach(function (btn) {
+        var label = (btn.textContent || "").trim();
+        if (ACTION_COLORS[label]) buttons.push({ btn: btn, label: label });
+      });
+      if (!buttons.length) return;
+
+      var hasUndoApprove = buttons.some(function (b) {
+        return b.label === "Undo Approve";
+      });
+      var hasUndoReject = buttons.some(function (b) {
+        return b.label === "Undo Reject";
+      });
+
+      if (hasUndoApprove) {
+        buttons.forEach(function (b) {
+          b.btn.style.display = b.label === "Undo Approve" ? "" : "none";
+        });
+        return;
+      }
+      if (hasUndoReject) {
+        buttons.forEach(function (b) {
+          b.btn.style.display = b.label === "Undo Reject" ? "" : "none";
+        });
+        return;
+      }
+
+      var lastApprove = null;
+      var lastReject = null;
+      buttons.forEach(function (b) {
+        if (b.label === "Approve") lastApprove = b.btn;
+        if (b.label === "Reject") lastReject = b.btn;
+      });
+      buttons.forEach(function (b) {
+        if (b.label === "Approve") {
+          b.btn.style.display = b.btn === lastApprove ? "" : "none";
+        } else if (b.label === "Reject") {
+          b.btn.style.display = b.btn === lastReject ? "" : "none";
+        } else {
+          b.btn.style.display = "none";
+        }
+      });
+    });
+  }
+
   function styleRecCards() {
     document.querySelectorAll(".crisis-rec-card, .crisis-dispatch-wrap").forEach(function (card) {
       var step =
@@ -51,6 +104,7 @@
         btn.style.cursor = "pointer";
       }
     });
+    syncRecCardActions();
   }
 
   function run() {

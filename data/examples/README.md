@@ -1,6 +1,8 @@
 # Demo incident inputs (Chainlit UI)
 
-Use these in **Chainlit** at http://localhost:7860 — click a **starter** button or copy from a `.txt` file.
+Use these in **Chainlit** — click a **starter** button or copy from a `.txt` file.
+
+On a GPU instance, open Chainlit via port-forward (e.g. http://localhost:7860 after `brev port-forward ... --port 7860:7860`).
 
 ## Paste format
 

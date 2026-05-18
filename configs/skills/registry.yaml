@@ -1,0 +1,17 @@
+# Skill handlers (see src/crisis/skills/registry.py)
+skills:
+  playbook_rag:
+    description: Load tagged playbook excerpts from knowledge base
+    timeout_s: 30
+  weather_api:
+    description: Weather snapshot for incident area (stub in v1)
+    timeout_s: 15
+  flood_zone_gis:
+    description: Flood zone / GIS context (stub in v1)
+    timeout_s: 15
+  evacuation_routes:
+    description: Evacuation route planning hint (stub in v1)
+    timeout_s: 15
+  draft_recommendation:
+    description: LLM draft — Summary, Recommendations, Communication
+    timeout_s: 120

@@ -1,0 +1,33 @@
+# Utilities specialist — workflow definitions (TECHNICAL_DESIGN §6)
+agent_id: utilities
+role: utilities_coordinator
+display_name: Utilities Response Specialist
+
+workflow_selection:
+  default: utilities_standard
+  rules_file: utilities_selector_rules.yaml
+
+workflows:
+  utilities_standard:
+    description: Standard water / power utility response
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [utilities, water] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]
+
+  utilities_hospital_priority:
+    description: Hospital-critical utility isolation
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [utilities, hospital] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]

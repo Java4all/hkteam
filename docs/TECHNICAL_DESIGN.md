@@ -5,11 +5,13 @@
 | **Version** | 1.0 |
 | **Status** | Implemented (v1.0 application); see `docs/RUNBOOK_v1.md` |
 | **Application** | `src/crisis/` v1.0.0 |
-| **Primary OS** | Ubuntu 22.04+ (see `docs/UBUNTU.md`) |
+| **Primary OS** | Ubuntu 22.04+ on **NVIDIA GPU instance** (see `docs/UBUNTU.md`) |
+| **Deployment** | **Docker Compose only** for production/demo (`make start`) |
 | **Product** | Smart City Crisis Management System |
 | **Requirements** | `.kiro/specs/smart-city-crisis-management/requirements.md` |
-| **Stack** | LangGraph · NVIDIA NIM (cloud + optional local) · Langfuse · Chainlit |
-| **Inference** | Per-agent models on NVIDIA cloud (`LLM_PROFILE=multimodel`); optional local via config |
+| **Stack** | LangGraph · NVIDIA cloud LLM · Langfuse v3 · Chainlit · Postgres |
+| **Inference** | Per-agent models on NVIDIA cloud (`LLM_PROFILE=multimodel`); optional local NIM on same host |
+| **Agents guide** | `docs/AGENTS.md` · diagrams: `docs/diagrams/` |
 
 ---
 
@@ -31,10 +33,11 @@ It consolidates product requirements, architecture decisions from design reviews
 | Aggregator + HITL (API + Chainlit) | Implemented |
 | **Docker Compose stack** | **Mandatory** — `make start` |
 | **PostgreSQL** | **Mandatory** in Docker — incident persistence |
-| **Langfuse** | **Mandatory** in Docker — self-hosted v2 image |
-| LLM | **`LLM_PROFILE=multimodel`** — NVIDIA cloud from containers |
-| Host pytest | `make test` — mock LLM, no Docker |
-| Local NIM | Optional — `local_*` profiles in YAML |
+| **Langfuse** | **Mandatory** in Docker — self-hosted **v3** (clickhouse, redis, minio, worker) |
+| YAML specialist workflows | **Required** — every agent has `configs/agents/{id}.yaml` (tools, LLM, parallel, subagent) |
+| LLM | **`LLM_PROFILE=multimodel`** — NVIDIA cloud from `api` container |
+| Host pytest | `make test` — mock LLM, no Docker (dev/CI only) |
+| Local NIM | Optional on GPU host — `local_*` profiles in YAML (not in default compose) |
 
 ---
 
@@ -62,7 +65,7 @@ It consolidates product requirements, architecture decisions from design reviews
 
 ## 3. Architecture overview
 
-**Deployment containers (v1.0):** four Docker services (`postgres`, `langfuse`, `api`, `chainlit`) — roles, ports, and traffic flows are in **§12.2**.
+**Deployment (v1.0):** Docker Compose on an **NVIDIA GPU instance** — application containers plus Langfuse v3 backing services. LLM calls egress to **NVIDIA cloud**. Container map and traffic flows are in **§12.2**; diagram: `docs/diagrams/deployment.mmd`.
 
 ### 3.1 Layered system
 
@@ -86,6 +89,8 @@ It consolidates product requirements, architecture decisions from design reviews
 ```
 
 ### 3.2 End-to-end flow
+
+Source: `docs/diagrams/pipeline.mmd`
 
 ```mermaid
 flowchart TB
@@ -279,20 +284,24 @@ Workflow selection:
 4. If confidence < 0.6: default workflow + flag
 ```
 
-See `configs/agents/*.yaml` and `docs/schemas/AGENT_WORKFLOW.md` (inline below §6).
+See `configs/agents/*.yaml`, `docs/AGENTS.md`, and §6 below.
 
 #### 4.5.4 Specialist catalog
 
+Full tables (YAML files, LLM profiles, selector rules): **`docs/AGENTS.md`**.
+
 | agent_id | Role | Example workflows |
 |----------|------|-------------------|
-| `flood` | flood_coordinator | `flood_light`, `flood_standard`, `flood_critical`, `flood_dam_breach` |
-| `infrastructure` | infra_duty_officer | `infra_asset_failure`, `infra_cascade` |
-| `cyber` | cyber_lead | `cyber_containment`, `cyber_recon` |
-| `utilities` | utilities_dispatcher | `water_main_break`, `utilities_hospital_priority` |
-| `public_services` | service_continuity_lead | `service_disruption_standard` |
-| `public_safety` | eoc_safety_liaison | `public_safety_restricted` (templates/rules only) |
-| `comms` | comms_officer | `citizen_alert`, `inter_agency_brief` |
+| `flood` | flood_coordinator | `flood_light`, `flood_standard`, `flood_critical`, `flood_dam_breach` (+ subagent comms) |
+| `utilities` | utilities_coordinator | `utilities_standard`, `utilities_hospital_priority` |
+| `infrastructure` | infrastructure_coordinator | `infra_standard` |
+| `cyber` | cyber_coordinator | `cyber_containment`, `cyber_monitoring` |
+| `comms` | comms_coordinator | `comms_standard` |
+| `public_safety` | eoc_safety_liaison | `public_safety_restricted`, `public_safety_critical` |
+| `public_services` | service_continuity_lead | `services_standard`, `services_disruption` |
 | `general` | fallback_analyst | `general_triage` |
+
+**Workflow execution:** Each specialist always runs `run_specialist()` → `run_agent_workflow()` from YAML. Actions include `tool`, `llm`, `parallel`, `subagent`, `critic`, `rule`, `nat_workflow` (stub). Child agents capped by `CRISIS_MAX_SUBAGENT_DEPTH`. See `docs/AGENTS.md`.
 
 #### 4.5.5 Specialist output contract
 
@@ -347,7 +356,7 @@ class SpecialistOutput(BaseModel):
 | Edit comms draft | Store original + modified (Req 11.4) |
 | Approve dispatch | Hand off to Dispatch Service only |
 
-**UI:** Elapsed timer since incident created (Req 11.6).
+**UI (Chainlit v1.0):** Per-recommendation **Approve** / **Reject** cards; **Approve all** / **Reject all** do not submit; only **Submit** posts the decision and shows dispatch simulation (`SIMULATION_MODE`). After a decision on a card, only **Undo Approve** or **Undo Reject** is shown.
 
 ### 4.9 Dispatch service (isolated)
 
@@ -450,11 +459,12 @@ class IncidentState(TypedDict, total=False):
 | type | Purpose |
 |------|---------|
 | `tool` | Invoke skill from registry |
+| `llm` | `draft_recommendation` skill (structured Markdown output) |
+| `parallel` | Run `params.steps` concurrently (tools/llm) |
+| `subagent` | Run another agent’s workflow (`params.agent_id`, optional `workflow`) |
 | `rule` | Deterministic if/then |
-| `llm` | Schema-bound generation (`output_schema` required) |
 | `critic` | Validate prior LLM output vs evidence |
-| `parallel` | Run branches concurrently |
-| `nat_workflow` | Delegate tool-heavy slice to NAT YAML |
+| `nat_workflow` | Delegate to NAT YAML (stub in v1.0) |
 
 ### 6.2 Example agent config (excerpt)
 
@@ -469,7 +479,6 @@ llm:
   model: meta/llama-3.1-8b-instruct
 
 workflow_selection:
-  mode: hybrid
   default: flood_standard
   rules_file: flood_selector_rules.yaml
 
@@ -562,7 +571,7 @@ Profiles are reusable client settings (`base_url`, `model`, temperature, `max_to
 | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Specialist agents (flood, utilities, …) |
 | `cloud_llama_70b` | `meta/llama-3.3-70b-instruct` | Aggregator (merge specialist outputs) |
 | `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | Cyber specialist |
-| `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | Comms / public_services (Phi-3 not on current catalog) |
+| `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | public_services (Phi-3 not on current catalog) |
 | `cloud_nemotron_super` | `nvidia/llama-3.3-nemotron-super-49b-v1.5` | Defined, not assigned in v1.0 (optional upgrade) |
 | `local_llama_8b` | `meta/llama-3.1-8b-instruct` | Optional local NIM (`NIM_LOCAL_BASE_URL`) |
 
@@ -583,8 +592,8 @@ Profiles are reusable client settings (`base_url`, `model`, temperature, `max_to
 | Specialist **public_safety** | `cloud_nemotron_nano_8b` | same | |
 | Specialist **general** | `cloud_nemotron_nano_8b` | same | |
 | Specialist **cyber** | `cloud_mistral_7b` | `mistralai/mistral-7b-instruct-v0.3` | |
-| Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | |
-| Specialist **comms** | `cloud_phi_mini` | same | Often added for HIGH/CRITICAL severity |
+| Specialist **public_services** | `cloud_phi_mini` | `microsoft/phi-4-mini-instruct` | Legacy path |
+| Specialist **comms** | `cloud_nemotron_nano_8b` | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Added for HIGH/CRITICAL via smart routing |
 
 **Example 02** (flood + utilities) invokes at minimum: **nemotron-mini** (classify/route), **nemotron-nano-8b** (flood + utilities specialists), **llama-3.3-70b** (aggregate).
 
@@ -631,7 +640,8 @@ flowchart LR
   CLOUD --> M2[nemotron-nano-8b specialists]
   CLOUD --> M3[llama-3.3-70b aggregate]
   CLOUD --> M4[mistral-7b cyber]
-  CLOUD --> M5[phi-4-mini comms]
+  CLOUD --> M5[phi-4-mini public_services]
+  CLOUD --> M7[nemotron-nano comms]
   LOCAL --> M6[llama-8b local profile]
 ```
 
@@ -742,46 +752,49 @@ Retention: 90 days minimum (Req 13.4).
 
 ### 12.2 Docker Compose containers (v1.0)
 
-v1.0 runs as **four containers** on a single Docker host (`docker compose up`, `make start`). There is **no separate NIM container** in the default stack — the `api` service calls **NVIDIA cloud** over HTTPS (`integrate.api.nvidia.com`). Optional local NIM is documented in §8.1.3–8.1.4 and runs outside this compose file if needed.
+v1.0 runs on a **single NVIDIA GPU instance** as Docker Compose (`make start`). There is **no NIM inference container** in the default stack — the **api** service calls **NVIDIA cloud** over HTTPS. Optional local NIM on the same host is documented in §8.1.4.
+
+**Source diagram:** `docs/diagrams/deployment.mmd`
 
 #### 12.2.1 Container map
 
 ```mermaid
 flowchart TB
-  subgraph host["Docker host (Ubuntu / Brev)"]
-    subgraph net["Compose network: smart-city-crisis_default"]
-      PG[(postgres<br/>:5432)]
-      LF[langfuse<br/>:3000]
-      API[api<br/>:8080]
-      CL[chainlit<br/>:7860]
+  subgraph host["NVIDIA GPU instance — Docker Compose"]
+    subgraph net["smart-city-crisis network"]
+      PG[(postgres)]
+      LF[langfuse :3000]
+      LFW[langfuse-worker]
+      CH[(clickhouse)]
+      RD[(redis)]
+      MN[(minio)]
+      API[api :8080]
+      CL[chainlit :7860]
     end
   end
-
   OP[Operator browser]
-  NIM[NVIDIA NIM cloud<br/>HTTPS]
-
-  OP -->|7860 Chainlit UI| CL
-  OP -->|8080 REST optional| API
-  OP -->|3000 traces UI| LF
-
-  CL -->|HTTP API_BASE_URL| API
-  API -->|DATABASE_URL| PG
-  API -->|LANGFUSE_HOST traces| LF
-  LF -->|DATABASE_URL langfuse DB| PG
-  API -->|NVIDIA_API_KEY| NIM
-
-  VOL[(crisis_pg volume)]
-  PG --- VOL
+  NIM[NVIDIA cloud API]
+  OP --> CL
+  CL --> API
+  API --> PG
+  API --> LF
+  LF --> PG & CH & RD & MN
+  LFW --> PG
+  API --> NIM
 ```
 
 #### 12.2.2 Container roles
 
-| Container | Image | Port (host) | Role in application design |
-|-----------|--------|-------------|----------------------------|
-| **postgres** | `postgres:16-alpine` | 5432 | **Persistence layer.** Database `crisis` stores incidents, decisions, and audit fields written by the API. Second logical DB `langfuse` (created by init script) stores Langfuse metadata. Survives restarts via volume `crisis_pg`. |
-| **langfuse** | `langfuse/langfuse:2` | 3000 | **Observability platform (O1).** Self-hosted trace UI and ingestion API. Operators create a project and API keys here; keys go in `.env` so the **api** process can emit LangGraph/LLM spans. Does not run agents or business logic. |
-| **api** | `smart-city-crisis-app:1.0` (built locally) | 8080 | **Core application runtime.** FastAPI + LangGraph incident orchestrator: intake, classify, Smart Router, specialist fan-out, aggregate, critic. Reads `configs/` and `data/` (mounted read-only). Persists to Postgres. Calls NVIDIA cloud per `LLM_PROFILE`. Exposes `/health`, `/incidents`, decision endpoints. |
-| **chainlit** | `smart-city-crisis-app:1.0` (same image, different command) | 7860 | **Operator console (O2).** Thin presentation tier: chat UI, demo starters, approve/reject actions. Forwards incident text to **api** via `API_BASE_URL=http://api:8080`. Does not call LLMs or Postgres directly. |
+| Container | Image | Port (host) | Role |
+|-----------|--------|-------------|------|
+| **postgres** | `postgres:16-alpine` | 5432 | DB `crisis` (incidents) + DB `langfuse` (traces metadata). Volume `crisis_pg`. |
+| **clickhouse** | `clickhouse/clickhouse-server:24` | internal | Langfuse v3 analytics store |
+| **redis** | `redis:7-alpine` | internal | Langfuse v3 queue |
+| **minio** | `minio/minio` | internal | Langfuse v3 object storage (events/media) |
+| **langfuse-worker** | `langfuse/langfuse-worker:3` | — | Background ingestion |
+| **langfuse** | `langfuse/langfuse:3` | 3000 | Trace UI + API (O1). Project API keys → `.env` |
+| **api** | `smart-city-crisis-app:1.0` (local build) | 8080 | FastAPI + LangGraph + LLM egress. Mounts `configs/`, `data/`. |
+| **chainlit** | same image | 7860 | Operator UI (O2). `API_BASE_URL=http://api:8080`. Mounts `public/`, `.chainlit/`. |
 
 **Shared image:** `api` and `chainlit` use one Dockerfile (`smart-city-crisis-app:1.0`). Only the container **command** differs (uvicorn vs `chainlit run`). Rebuild with `make build` after code or dependency changes.
 
@@ -874,31 +887,31 @@ See `docs/DOCKER.md` and `docker-compose.yml` for ports, health checks, and oper
 hkteam/
   README.md
   docs/
-    TECHNICAL_DESIGN.md          # this document
-  .kiro/specs/.../requirements.md
+    TECHNICAL_DESIGN.md
+    AGENTS.md                    # specialist roles, YAML workflows
+    DOCKER.md
+    diagrams/                    # deployment.mmd, pipeline.mmd, agent-workflow.mmd
   configs/
-    agents/                      # per-agent workflow + LLM
-    llm/                         # multimodel.yaml — per-agent cloud/local profiles
-    smart_routing/               # category_map, dependencies, caps
+    agents/                      # per-agent YAML workflows + selector rules
+    llm/multimodel.yaml          # LLM_PROFILE assignments
+    smart_routing/
     skills/registry.yaml
-    nat/                           # optional NAT workflows
-  data/                            # synthetic incidents, KB, catalogs
-  src/
-    api/                           # FastAPI routes, SSE
-    ui/                            # Chainlit app (operator console)
-    graph/
-      incident_graph.py
-      nodes/                       # classify, smart_route, aggregate, ...
-      specialists/                 # subgraph per agent_id
-    models/                        # Pydantic schemas
-    skills/                        # tool implementations
-    observability/
-    dispatch/                      # isolated dispatch adapters
-  evals/
-    cases.yaml
+  data/examples/                 # demo incidents for Chainlit
+  src/crisis/
+    api/main.py                  # FastAPI + SSE /incidents/stream
+    ui/chainlit_app.py           # operator console
+    graph/incident_graph.py
+    pipeline/runner.py           # parallel specialists + progress
+    agents/                      # specialist, workflow_engine, workflow_select
+    routing/smart_router.py
+    llm/registry.py
+    dispatch/simulator.py
+    skills/registry.py
+  public/                        # crisis.css, crisis-ui.js, favicon
   tests/
   docker-compose.yml
-  pyproject.toml
+  Dockerfile
+  Makefile
 ```
 
 ---
@@ -969,6 +982,8 @@ hkteam/
 ## 18. References
 
 - Product requirements: `.kiro/specs/smart-city-crisis-management/requirements.md`
+- Specialist agents: `docs/AGENTS.md`
+- Diagrams: `docs/diagrams/`
 - Example configs: `configs/` in this repository
 - External: [NVIDIA NIM](https://build.nvidia.com/), [NeMo Agent Toolkit](https://github.com/NVIDIA/NeMo-Agent-Toolkit), [LangGraph](https://langchain-ai.github.io/langgraph/)
 

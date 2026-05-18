@@ -318,6 +318,10 @@ async def _refresh_rec_card(iid: str, rec_id: str) -> None:
         return
     for i, r in enumerate(state["recommendations"]):
         if r["id"] == rec_id:
+            old_actions = list(msg.actions)
+            msg.actions = []
+            for action in old_actions:
+                await action.remove()
             msg.content = format_rec_card(i, r, state)
             msg.actions = build_rec_card_actions(iid, rec_id, state)
             await msg.update()

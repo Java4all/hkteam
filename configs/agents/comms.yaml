@@ -1,0 +1,19 @@
+agent_id: comms
+role: comms_coordinator
+display_name: Public Communications Specialist
+
+workflow_selection:
+  default: comms_standard
+
+workflows:
+  comms_standard:
+    description: Public alert and stakeholder messaging
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [comms, public_alert] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]

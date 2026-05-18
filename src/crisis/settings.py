@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     llm_profile: str = "multimodel"
     crisis_use_mock_llm: bool = False
     crisis_llm_timeout: float = 90.0
+    # Max nested subagent invocations from workflow "subagent" actions
+    crisis_max_subagent_depth: int = 2
+    # Force workflows: flood:flood_critical,utilities:utilities_hospital_priority
+    crisis_agent_workflows: str = ""
 
     langfuse_enabled: bool = True
     langfuse_public_key: str = ""

@@ -23,6 +23,7 @@ from crisis.pipeline.events import (
     stages_to_trace,
 )
 from crisis.agents.specialist import run_specialist
+from crisis.agents.workflow_overrides import apply_workflow_override
 from crisis.llm.registry import resolve_profile
 
 ProgressCallback = Callable[[dict[str, Any]], None]
@@ -102,7 +103,8 @@ def _run_specialists_with_progress(
 
     def _run_one(aid: str) -> tuple[str, SpecialistOutput, str | None]:
         try:
-            return aid, run_specialist(aid, handoff), None
+            agent_handoff = apply_workflow_override(handoff, aid)
+            return aid, run_specialist(aid, agent_handoff), None
         except Exception as exc:
             return aid, _failed_output(aid, "unknown", str(exc)), str(exc)
 

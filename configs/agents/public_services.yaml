@@ -1,0 +1,31 @@
+agent_id: public_services
+role: service_continuity_lead
+display_name: Public Services Specialist
+
+workflow_selection:
+  default: services_standard
+
+workflows:
+  services_standard:
+    description: Municipal service continuity
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [public_services] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]
+
+  services_disruption:
+    description: Widespread service disruption
+    actions:
+      - id: kb
+        type: tool
+        skill: playbook_rag
+        params: { tags: [public_services, disruption] }
+      - id: analyze
+        type: llm
+        skill: draft_recommendation
+        input_from: [kb]
