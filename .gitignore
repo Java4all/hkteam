@@ -92,3 +92,4 @@ postgres_data/
 *.bak
 *.tmp
 .cache/
+.preferred-python

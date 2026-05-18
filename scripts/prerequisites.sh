@@ -31,6 +31,36 @@ compose_available() {
   docker compose version >/dev/null 2>&1 || command -v docker-compose >/dev/null 2>&1
 }
 
+python_ge_311() {
+  local cmd="$1"
+  "$cmd" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)' 2>/dev/null
+}
+
+find_preferred_python() {
+  local cmd
+  for cmd in python3.12 python3.11 python3; do
+    if command -v "$cmd" >/dev/null 2>&1 && python_ge_311 "$cmd"; then
+      echo "$cmd"
+      return 0
+    fi
+  done
+  return 1
+}
+
+install_python312() {
+  echo "Installing Python 3.12 (sudo)..."
+  if sudo apt-get install -y python3.12 python3.12-venv python3.12-dev 2>/dev/null; then
+    ok "python3.12 installed from apt"
+    return 0
+  fi
+  warn "python3.12 not in default apt - trying deadsnakes PPA..."
+  sudo apt-get install -y software-properties-common
+  sudo add-apt-repository -y ppa:deadsnakes/ppa
+  sudo apt-get update
+  sudo apt-get install -y python3.12 python3.12-venv python3.12-dev
+  ok "python3.12 installed from deadsnakes PPA"
+}
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -74,18 +104,18 @@ for cmd in make curl git; do
   fi
 done
 
-# --- Python (host pytest / demo optional) ---
-if command -v python3 >/dev/null 2>&1; then
-  PYVER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-  PYMAJOR="$(python3 -c 'import sys; print(sys.version_info.major)')"
-  PYMINOR="$(python3 -c 'import sys; print(sys.version_info.minor)')"
-  if [[ "$PYMAJOR" -gt 3 ]] || [[ "$PYMAJOR" -eq 3 && "$PYMINOR" -ge 11 ]]; then
-    ok "python3 $PYVER (>= 3.11)"
-  else
-    warn "python3 $PYVER — need 3.11+ for host 'make install' / 'make test' (Docker stack does not require host Python)"
-  fi
+# --- Python 3.11+ (host make install / make test; Docker stack does not need host Python) ---
+PREFERRED_PY="$(find_preferred_python || true)"
+if [[ -n "$PREFERRED_PY" ]]; then
+  PYVER="$("$PREFERRED_PY" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+  ok "$PREFERRED_PY $PYVER - for make install / make test"
 else
-  warn "python3 — optional unless you run make install / make test on host"
+  if command -v python3 >/dev/null 2>&1; then
+    PYVER="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+    warn "python3 $PYVER - need 3.11+; run: make prerequisites"
+  else
+    warn "no python3.11+ found - run: make prerequisites"
+  fi
 fi
 
 # --- Docker daemon ---
@@ -143,6 +173,17 @@ if [[ "$MODE" == "--install" ]]; then
   echo "Installing base apt packages (sudo)..."
   sudo apt-get update
   sudo apt-get install -y "${BASE_APT_PACKAGES[@]}"
+
+  if ! find_preferred_python >/dev/null 2>&1; then
+    install_python312
+  fi
+  PREFERRED_PY="$(find_preferred_python || true)"
+  if [[ -n "$PREFERRED_PY" ]]; then
+    echo "$PREFERRED_PY" > .preferred-python
+    ok "preferred Python: $PREFERRED_PY written to .preferred-python"
+  else
+    fail "Python 3.11+ still not available after install attempt"
+  fi
 
   if command -v docker >/dev/null 2>&1; then
     ok "Docker already installed — skipping docker.io (avoids containerd.io conflict)"

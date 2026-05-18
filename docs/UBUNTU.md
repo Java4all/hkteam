@@ -22,13 +22,15 @@ Python **3.11+** is required. Check:
 python3 --version
 ```
 
-On Ubuntu 22.04, if needed:
+`make prerequisites` installs **Python 3.12** automatically if the default `python3` is older than 3.11 (common on Ubuntu 22.04 with Python 3.10). It writes `.preferred-python` for `make install`.
+
+Manual install:
 
 ```bash
-sudo apt install -y software-properties-common
-sudo add-apt-repository -y ppa:deadsnakes/ppa
-sudo apt install -y python3.11 python3.11-venv
-# then use python3.11 -m venv .venv
+sudo apt install -y python3.12 python3.12-venv
+# or on older Ubuntu:
+sudo add-apt-repository -y ppa:deadsnakes/ppa && sudo apt update
+sudo apt install -y python3.12 python3.12-venv
 ```
 
 ## 2. Clone / enter project

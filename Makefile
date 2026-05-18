@@ -7,7 +7,9 @@ COMPOSE := docker compose --env-file .env
 ifeq ($(OS),Windows_NT)
   PY       ?= .venv/Scripts/python.exe
   PIP      ?= .venv/Scripts/pip.exe
+  PYTHON_CMD ?= python
 else
+  PYTHON_CMD ?= $(shell if [ -f .preferred-python ]; then cat .preferred-python; elif command -v python3.12 >/dev/null 2>&1; then echo python3.12; else echo python3; fi)
   PY       ?= .venv/bin/python
   PIP      ?= .venv/bin/pip
 endif
@@ -56,11 +58,12 @@ setup: prerequisites ## Full first-time setup: apt + .env
 	@echo "Setup done. Edit .env then: make start"
 endif
 
-install: ## Local venv for pytest (optional)
+install: ## Local venv for pytest (optional; uses python3.12 if available)
 ifeq ($(OS),Windows_NT)
 	@if not exist .venv python -m venv .venv
 else
-	@test -d .venv || python3 -m venv .venv
+	@test -d .venv || $(PYTHON_CMD) -m venv .venv
+	@.venv/bin/python --version
 endif
 	$(PIP) install -U pip
 	$(PIP) install -e ".[dev]"
