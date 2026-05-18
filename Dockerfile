@@ -15,8 +15,6 @@ COPY data ./data
 
 RUN pip install --no-cache-dir -U pip \
     && pip install --no-cache-dir -e "." \
-    && pip install --no-cache-dir pillow \
-    && python scripts/generate_favicon_assets.py \
     && python -m chainlit init \
     && sed -i 's/^name = "Assistant"/name = "Smart City Crisis Management"/' .chainlit/config.toml \
     && sed -i 's|^# custom_css = "/public/test.css"|custom_css = "/public/crisis.css"|' .chainlit/config.toml \
