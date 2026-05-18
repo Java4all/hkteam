@@ -27,7 +27,12 @@ make restart
 
 ## Langfuse tracing
 
-The API uses `langfuse.langchain.CallbackHandler` (requires the **`langchain`** package in the Docker image). If logs show `langfuse callback not available`, run `make build --no-cache api && make restart`.
+The API uses `langfuse.langchain.CallbackHandler` (requires **`langchain`** + **`langfuse` 3.x** in the image). Traces are **flushed after each incident**. Self-hosted UI must be **Langfuse v3** (`langfuse/langfuse:3` in compose — not the old single-container v2 image).
+
+```bash
+make test-langfuse   # smoke trace — should appear in UI
+curl -s http://127.0.0.1:8080/health | python3 -m json.tool   # check langfuse.auth_ok
+```
 
 ## Langfuse keys (required for tracing)
 

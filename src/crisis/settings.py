@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_host: str = "http://localhost:3000"
+    langfuse_base_url: str = ""
 
     configs_dir: Path = ROOT / "configs"
     data_dir: Path = ROOT / "data"

@@ -105,6 +105,8 @@ Production demo for others: **`make start`** only.
 | Chainlit cannot reach API | `API_BASE_URL=http://api:8080` in compose |
 | No traces in Langfuse | Set `LANGFUSE_PUBLIC_KEY` / `SECRET_KEY` after project setup |
 | `langfuse callback not available` / install langchain | Rebuild API image: `make build --no-cache api` (needs `langchain` package for Langfuse callback) |
+| No traces in Langfuse UI | Use **Langfuse v3** stack in compose (not `langfuse:2`); set API keys in `.env`; run `make test-langfuse`; submit incident; check **Traces** (not only Sessions) |
+| `auth_ok: false` on `/health` | Regenerate project keys in Langfuse UI; `LANGFUSE_HOST=http://langfuse:3000` inside Docker |
 | Port conflict | Change `API_PORT`, `CHAINLIT_PORT`, `LANGFUSE_PORT` in `.env` |
 | Chainlit blank page / `project/settings` 500 | Run `make diagnose-chainlit`. Then **`make build` with no cache** and `make restart` (image runs `chainlit init` at build). Ensure `.env` has no bad `CHAINLIT_ROOT_PATH`. Chainlit service no longer loads full `.env`. |
 | Chainlit blank (other) | `docker compose logs chainlit`; ensure `CHAINLIT_URL=http://localhost:7860`; unset `CHAINLIT_ROOT_PATH`; hard-refresh browser |

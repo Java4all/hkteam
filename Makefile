@@ -74,6 +74,10 @@ diagnose-chainlit: ## Debug Chainlit blank UI / project/settings 500
 	chmod +x scripts/diagnose-chainlit.sh
 	bash scripts/diagnose-chainlit.sh
 
+test-langfuse: ## Send smoke trace to Langfuse (verify keys + SDK)
+	chmod +x scripts/test-langfuse-trace.sh
+	bash scripts/test-langfuse-trace.sh
+
 start: ## Start full stack (Docker)
 	@test -f .env || (echo "Copy .env.example to .env first" && exit 1)
 	$(COMPOSE) up -d --build
