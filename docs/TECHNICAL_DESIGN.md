@@ -679,7 +679,7 @@ Retention: 90 days minimum (Req 13.4).
 
 ### 9.4 Health
 
-`GET /health` — orchestrator, checkpointer, NIM endpoints, per-agent registry load status.
+`GET /health/live` — fast liveness (Docker healthcheck). `GET /health` — Langfuse status; `GET /health?deep=1` — full NVIDIA probes (slow).
 
 ---
 

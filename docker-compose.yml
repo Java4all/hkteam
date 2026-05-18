@@ -178,11 +178,12 @@ services:
       - ./configs:/app/configs:ro
       - ./data:/app/data:ro
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8080/health"]
+      # /health runs Langfuse + NVIDIA probes and can exceed 5s — use /health/live
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/health/live"]
       interval: 10s
       timeout: 5s
       retries: 6
-      start_period: 20s
+      start_period: 30s
 
   chainlit:
     <<: *app-image

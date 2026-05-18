@@ -30,7 +30,8 @@ Keys: project Settings → API Keys → `.env` → `make restart`.
 
 | Check | Command / URL |
 |-------|----------------|
-| API | `curl -s localhost:8080/health` |
+| API liveness | `curl -s localhost:8080/health/live` |
+| API diagnostics | `curl -s 'localhost:8080/health?deep=1'` (slow — NVIDIA probes) |
 | Chainlit | http://localhost:7860 |
 | Langfuse | http://localhost:3000 |
 | NVIDIA models | `make verify-nvidia-api` |

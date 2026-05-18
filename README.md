@@ -23,7 +23,8 @@ After first start: Langfuse → project → **API Keys** → add to `.env` → `
 | URL | Service |
 |-----|---------|
 | http://localhost:7860 | Operator UI (Chainlit) |
-| http://localhost:8080/health | API |
+| http://localhost:8080/health/live | API liveness |
+| http://localhost:8080/health | API diagnostics (add `?deep=1` for NVIDIA) |
 | http://localhost:3000 | Langfuse traces |
 
 ## Documentation

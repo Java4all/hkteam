@@ -34,9 +34,19 @@ class HumanDecisionRequest(BaseModel):
     modified_recommendations: dict[str, str] = Field(default_factory=dict)
 
 
+@app.get("/health/live")
+def health_live():
+    """Fast liveness probe for Docker / load balancers (no external API calls)."""
+    return {"status": "ok", "version": "1.0.0"}
+
+
 @app.get("/health")
-def health():
-    return {
+def health(deep: bool = False):
+    """
+    Operator diagnostics. Default is quick (Langfuse reachability only).
+    Use ``?deep=1`` for full NVIDIA model probes (slow — can take 60s+).
+    """
+    body: dict = {
         "status": "ok",
         "version": "1.0.0",
         "llm_profile": settings.llm_profile,
@@ -44,8 +54,14 @@ def health():
         "simulation_mode": settings.simulation_mode,
         "database": bool(settings.database_url),
         "langfuse": langfuse_health(),
-        "nvidia": nvidia_health(),
     }
+    if deep:
+        body["nvidia"] = nvidia_health()
+    else:
+        body["nvidia"] = {
+            "note": "Skipped for fast health. Use GET /health?deep=1 or make verify-nvidia-api",
+        }
+    return body
 
 
 @app.post("/incidents")

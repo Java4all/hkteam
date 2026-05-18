@@ -77,5 +77,6 @@ docker compose --env-file .env up -d --force-recreate api chainlit
 | NVIDIA 404 / `Function id … version null` | Enable each model on [build.nvidia.com](https://build.nvidia.com/) for your key; `make verify-nvidia-api` lists per-agent probes. Cyber defaults to nemotron-nano (not mistral) in `multimodel.yaml`. |
 | Chainlit blank | `CHAINLIT_URL` matches browser; `make diagnose-chainlit`; rebuild chainlit |
 | API → DB errors | `DATABASE_URL` host = `postgres` |
+| `dependency api failed to start` but api logs show Uvicorn OK | API is running but **unhealthy**: old healthcheck hit `/health` (slow NVIDIA probe). Rebuild api; healthcheck uses `/health/live`. Run `docker inspect smart-city-crisis-api-1 --format '{{.State.Health.Status}}'` |
 
 Host prep: [UBUNTU.md](UBUNTU.md). Daily ops: [RUNBOOK_v1.md](RUNBOOK_v1.md).
