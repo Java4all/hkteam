@@ -13,7 +13,7 @@ import yaml
 from crisis.agents.display import agent_display_name, format_agent_list
 from crisis.agents.recommendations import agent_id_from_recommendation_id
 from crisis.ui.pipeline_animator import PipelineProgressUI
-from crisis.ui.pipeline_display import format_pipeline_stages, format_trace
+from crisis.ui.pipeline_display import format_pipeline_stages
 from crisis.ui.review_panel import (
     build_footer_actions,
     build_rec_card_actions,
@@ -238,7 +238,6 @@ async def on_message(message: cl.Message):
     narrative = summary.get("narrative", "")
     recs = summary.get("ranked_recommendations", [])
     rec_lines = "\n".join(_format_rec(i, r) for i, r in enumerate(recs[:12]))
-    trace = format_trace(data.get("trace", []))
     stage_table = format_pipeline_stages(stages or data.get("pipeline_stages", []))
 
     failed_agents = summary.get("agents_failed") or []
@@ -258,8 +257,7 @@ async def on_message(message: cl.Message):
             f"**Routing:** {routing.get('rationale', '')}{failed_note}\n\n"
             f"### Pipeline summary\n{stage_table}\n\n"
             f"### 📋 EOC Briefing\n{narrative}\n\n"
-            f"### Recommendations (preview)\n{rec_lines or '_(none)_'}\n\n"
-            f"### Trace\n{trace}"
+            f"### Recommendations (preview)\n{rec_lines or '_(none)_'}"
         ),
     ).send()
 
