@@ -1,5 +1,6 @@
-<p class="crisis-welcome-main">Smart City Crisis Management</p>
-<p class="crisis-welcome-details">Emergency Operations Center — Incident Analysis Console</p>
+# Smart City Crisis Management
+
+Emergency Operations Center — Incident Analysis Console
 
 <details class="crisis-help">
 <summary class="crisis-help-trigger"><span class="crisis-help-icon">?</span> Help</summary>

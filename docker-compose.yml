@@ -205,6 +205,7 @@ services:
     volumes:
       - ./public:/app/public:ro
       - ./.chainlit:/app/.chainlit:ro
+      - ./chainlit.md:/app/chainlit.md:ro
     working_dir: /app
     command:
       [

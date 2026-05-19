@@ -1,6 +1,6 @@
 /** Crisis console: favicon, theme CSS, recommendation review styling */
 (function () {
-  var CSS_HREF = "/public/crisis.css?v=crisis9";
+  var CSS_HREF = "/public/crisis.css?v=crisis10";
   var APP_TITLE = "Smart City Crisis Management";
   var APP_SUBTITLE =
     "Emergency Operations Center \u2014 Incident Analysis Console";
@@ -134,6 +134,35 @@
     syncRecCardActions();
   }
 
+  function applyLandingBranding() {
+    if (
+      document.getElementById("crisis-landing-brand") ||
+      document.querySelector(".crisis-welcome")
+    ) {
+      return;
+    }
+    var composer =
+      document.querySelector("#message-composer") ||
+      document.querySelector('[data-testid="message-composer"]') ||
+      document.querySelector("textarea[placeholder*='message']");
+    if (!composer) {
+      return;
+    }
+    var anchor = composer.closest("form") || composer.parentElement;
+    if (!anchor || !anchor.parentElement) {
+      return;
+    }
+    var block = document.createElement("div");
+    block.id = "crisis-landing-brand";
+    block.innerHTML =
+      '<p class="crisis-welcome-main">' +
+      APP_TITLE +
+      '</p><p class="crisis-welcome-details">' +
+      APP_SUBTITLE +
+      "</p>";
+    anchor.parentElement.insertBefore(block, anchor);
+  }
+
   function applyHeaderBranding() {
     var header = document.querySelector("header");
     if (!header) {
@@ -143,7 +172,10 @@
     if (existingDetails && existingDetails.textContent === APP_SUBTITLE) {
       return;
     }
-    var logoLink = header.querySelector('a[href="/"]');
+    var logoLink =
+      header.querySelector('a[href="/"]') ||
+      header.querySelector('a[href*=""]') ||
+      header.querySelector("a");
     if (!logoLink) {
       return;
     }
@@ -233,6 +265,7 @@
     ensureStyles();
     applyFavicon();
     applyHeaderBranding();
+    applyLandingBranding();
     hideConversationStarters();
     styleRecCards();
     initSidebarTabs();
@@ -246,6 +279,7 @@
 
   var obs = new MutationObserver(function () {
     applyHeaderBranding();
+    applyLandingBranding();
     hideConversationStarters();
     styleRecCards();
     initSidebarTabs();

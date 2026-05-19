@@ -120,7 +120,47 @@ div:has(> button[data-testid="starter"]) {
   transition: width 0.35s ease;
 }
 
-/* Welcome / landing — Main + Details (matches header) */
+/* Center landing (empty thread) — Main + Details under logo */
+#crisis-landing-brand {
+  text-align: center;
+  margin: 0 auto 1.25rem;
+  padding: 0 1rem;
+  max-width: 40rem;
+}
+
+#crisis-landing-brand .crisis-welcome-main {
+  font-size: 1.5rem !important;
+  margin-bottom: 0.4rem !important;
+}
+
+#crisis-landing-brand .crisis-welcome-details {
+  font-size: 0.95rem !important;
+  margin-bottom: 0 !important;
+}
+
+/* chainlit.md readme (when shown) */
+.prose h1:first-of-type,
+.markdown-body h1:first-of-type {
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  margin-bottom: 0.35rem !important;
+  text-align: center;
+}
+
+.prose h1:first-of-type + p,
+.markdown-body h1:first-of-type + p {
+  text-align: center;
+  color: #64748b !important;
+  font-size: 0.95rem !important;
+  margin-top: 0 !important;
+}
+
+.dark .prose h1:first-of-type + p,
+html.dark .prose h1:first-of-type + p {
+  color: #94a3b8 !important;
+}
+
+/* Welcome message in thread — Main + Details (matches header) */
 .crisis-welcome-main {
   font-weight: 700 !important;
   font-size: 1.35rem !important;

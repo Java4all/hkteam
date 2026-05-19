@@ -15,6 +15,7 @@ import httpx
 
 from crisis.agents.display import agent_display_name, format_agent_list
 from crisis.ui.pipeline_animator import PipelineProgressUI
+from crisis.ui.welcome import format_welcome_message
 from crisis.ui.pipeline_display import format_pipeline_stages
 from crisis.ui.dispatch_animator import DispatchProgressUI, animate_dispatch_reveal
 from crisis.ui.incident_history import format_incident_sidebar_html
@@ -160,6 +161,7 @@ async def refresh_incident_sidebar() -> None:
 
 @cl.on_chat_start
 async def on_chat_start():
+    await cl.Message(content=format_welcome_message()).send()
     await refresh_incident_sidebar()
 
 
