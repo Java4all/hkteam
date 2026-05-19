@@ -79,13 +79,7 @@ def _sync_stages_after_node(
         stages = _append_specialist_stages(stages, list(routing.selected))
         stages = apply_stage(stages, "run_specialists", "running")
     elif node_name == "run_specialists":
-        failed = [
-            aid
-            for aid, out in (state.get("specialist_outputs") or {}).items()
-            if out.status in (SpecialistStatus.FAILED, SpecialistStatus.TIMEOUT)
-        ]
-        if failed and len(failed) == len(state.get("specialist_outputs") or {}):
-            pass  # run_specialists stage already set inside specialists runner
+        # ctx.stages is the same list — specialists runner already updated specialist rows
         stages = apply_stage(stages, "aggregate", "running")
     elif node_name == "aggregate":
         failed_specialists = [
@@ -101,6 +95,60 @@ def _sync_stages_after_node(
         stages = apply_stage(stages, "aggregate", "complete", detail=agg_detail)
 
     _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
+    return stages
+
+
+def _finalize_stages(state: IncidentState, stages: list[PipelineStage]) -> list[PipelineStage]:
+    """Ensure UI/API stages match completed pipeline state (no stale pending/running)."""
+    if state.get("incident"):
+        inc = state["incident"]
+        stages = apply_stage(
+            stages,
+            "intake",
+            "complete",
+            detail=",".join(c.value for c in inc.categories),
+        )
+    if state.get("routing_decision"):
+        routing = state["routing_decision"]
+        stages = apply_stage(
+            stages,
+            "smart_route",
+            "complete",
+            detail=f"{','.join(routing.selected)} ({routing.selection_mode})",
+        )
+
+    outputs = state.get("specialist_outputs") or {}
+    for aid, out in outputs.items():
+        sid = f"specialist:{aid}"
+        st = "complete" if out.status == SpecialistStatus.COMPLETE else "error"
+        detail = f"{out.duration_ms}ms" if out.status == SpecialistStatus.COMPLETE else "failed"
+        err = None if out.status == SpecialistStatus.COMPLETE else "; ".join(out.check_notes) or "failed"
+        stages = apply_stage(stages, sid, st, detail=detail, error=err)
+
+    failed = [
+        a
+        for a, o in outputs.items()
+        if o.status in (SpecialistStatus.FAILED, SpecialistStatus.TIMEOUT)
+    ]
+    rs_detail = "done:" + ",".join(outputs.keys()) if outputs else "done"
+    if failed:
+        rs_detail += f" failed:{','.join(failed)}"
+    stages = apply_stage(
+        stages,
+        "run_specialists",
+        "error" if failed and len(failed) == len(outputs) else "complete",
+        detail=rs_detail,
+        error=f"{len(failed)} specialist(s) failed" if failed else None,
+    )
+
+    if state.get("incident_summary"):
+        agg_detail = (
+            "briefing ready"
+            if not failed
+            else f"briefing ready · failed: {', '.join(failed)}"
+        )
+        stages = apply_stage(stages, "aggregate", "complete", detail=agg_detail)
+
     return stages
 
 
@@ -137,6 +185,8 @@ def run_incident_via_langgraph(
         finally:
             reset_pipeline_progress(progress_token)
 
+    stages = _finalize_stages(state, stages)
+    _emit(on_progress, {"type": "stages", "stages": stages_for_api(stages)})
     state["pipeline_stages"] = stages_for_api(stages)  # type: ignore[typeddict-unknown-key]
     state["trace"] = list(state.get("trace") or []) + stages_to_trace(stages)[-5:]
     return state

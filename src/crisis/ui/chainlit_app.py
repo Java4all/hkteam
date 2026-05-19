@@ -107,9 +107,11 @@ async def _run_incident_stream(
             elif payload.get("type") == "complete":
                 result = payload
                 stages = payload.get("pipeline_stages") or stages
+                await ui.set_stages(stages)
             elif payload.get("type") == "error":
                 error_msg = payload.get("message", "Pipeline failed")
                 stages = payload.get("stages") or stages
+                await ui.set_stages(stages)
 
     await ui.finish(stages, success=result is not None and not error_msg)
     return result, stages, error_msg
