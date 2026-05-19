@@ -3,8 +3,9 @@ from __future__ import annotations
 from threading import Lock
 from typing import Any
 
-from crisis.models.schemas import HumanDecision
+from crisis.models.schemas import HumanDecision, Incident
 from crisis.store.human_decision import apply_human_decision
+from crisis.store.summaries import row_to_summary
 
 
 class MemoryIncidentStore:
@@ -40,6 +41,15 @@ class MemoryIncidentStore:
     def list_ids(self) -> list[str]:
         with self._lock:
             return list(self._incidents.keys())
+
+    def list_summaries(self, limit: int = 50) -> list[dict]:
+        with self._lock:
+            rows = list(self._incidents.values())
+        rows.sort(
+            key=lambda r: r["incident"].created_at,
+            reverse=True,
+        )
+        return [row_to_summary(r) for r in rows[:limit]]
 
 
 incident_store = MemoryIncidentStore()

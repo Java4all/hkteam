@@ -17,7 +17,8 @@ import yaml
 from crisis.agents.display import agent_display_name, format_agent_list
 from crisis.ui.pipeline_animator import PipelineProgressUI
 from crisis.ui.pipeline_display import format_pipeline_stages
-from crisis.ui.dispatch_display import format_dispatch_simulation
+from crisis.ui.dispatch_animator import DispatchProgressUI, animate_dispatch_reveal
+from crisis.ui.incident_history import format_incident_sidebar_html
 from crisis.agents.recommendations import strip_recommendations_from_narrative
 from crisis.ui.review_panel import (
     build_footer_actions,
@@ -33,6 +34,7 @@ from crisis.ui.review_panel import (
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
 _PIPELINE_TIMEOUT = float(os.environ.get("CRISIS_PIPELINE_TIMEOUT", "300"))
 _EXAMPLES_YAML = Path(__file__).resolve().parents[3] / "data" / "examples" / "incidents.yaml"
+_SIDEBAR_KEY = "incident-history"
 
 
 def _format_incident_message(description: str, location: str) -> str:
@@ -156,6 +158,53 @@ async def set_starters():
     ]
 
 
+async def _fetch_incident_summaries() -> list[dict]:
+    current_id = cl.user_session.get("incident_id")
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(
+                f"{API}/incidents",
+                params={"limit": 40, "current_id": current_id or ""},
+            )
+            r.raise_for_status()
+            return list(r.json().get("incidents") or [])
+    except Exception:
+        return []
+
+
+async def refresh_incident_sidebar() -> None:
+    """Update element sidebar: Current incident + History tabs."""
+    current_id = cl.user_session.get("incident_id")
+    history = await _fetch_incident_summaries()
+    current_summary = None
+    if current_id:
+        for row in history:
+            if row.get("incident_id") == current_id:
+                current_summary = row
+                break
+    html = format_incident_sidebar_html(
+        current_id=current_id,
+        current_summary=current_summary,
+        history=history,
+    )
+    await cl.ElementSidebar.set_title("Incident console")
+    await cl.ElementSidebar.set_elements(
+        [
+            cl.Text(
+                name="incident_history_panel",
+                content=html,
+                display="side",
+            )
+        ],
+        key=_SIDEBAR_KEY,
+    )
+
+
+@cl.on_chat_start
+async def on_chat_start():
+    await refresh_incident_sidebar()
+
+
 @cl.on_message
 async def on_message(message: cl.Message):
     text = message.content.strip()
@@ -253,6 +302,7 @@ async def on_message(message: cl.Message):
         summary, fallback_agent=fallback_agent
     )
     await _send_review_panel(iid, review_recs)
+    await refresh_incident_sidebar()
 
 
 async def _send_review_panel(iid: str, recs: list[dict]) -> None:
@@ -386,41 +436,39 @@ async def submit_review(action: cl.Action):
         ).send()
         return
 
-    async with cl.Step(
-        name="Dispatch simulation",
-        type="run",
-        show_input=False,
-        default_open=True,
-    ) as step:
-        step.output = "Recording operator decision…"
-        try:
-            resp = await _post_decision(
-                iid,
-                list(state["approved"]),
-                list(state["rejected"]),
-                None,
-                dict(state["modified"]),
-                recs,
-            )
-        except httpx.HTTPStatusError as exc:
-            step.output = "Failed"
-            await cl.Message(content=_format_api_error(exc)).send()
-            return
-        except httpx.HTTPError as exc:
-            step.output = "Failed"
-            await cl.Message(
-                content=f"**Could not reach API** at `{API}` — {exc}"
-            ).send()
-            return
-        except Exception as exc:
-            step.output = "Failed"
-            await cl.Message(content=f"**Submit failed:** {exc}").send()
-            return
-        step.output = (
-            f"Simulation complete — {resp.get('dispatch_simulation', {}).get('dispatched_count', 0)} "
-            "dispatch entr(y/ies)"
+    approved = list(state["approved"])
+    dispatch_ui = DispatchProgressUI()
+
+    async def _post() -> dict:
+        return await _post_decision(
+            iid,
+            approved,
+            list(state["rejected"]),
+            None,
+            dict(state["modified"]),
+            recs,
         )
-    await _send_decision_messages(resp)
+
+    try:
+        resp = await animate_dispatch_reveal(
+            dispatch_ui,
+            approved_ids=approved,
+            post_fn=_post,
+        )
+    except httpx.HTTPStatusError as exc:
+        await cl.Message(content=_format_api_error(exc)).send()
+        return
+    except httpx.HTTPError as exc:
+        await cl.Message(
+            content=f"**Could not reach API** at `{API}` — {exc}"
+        ).send()
+        return
+    except Exception as exc:
+        await cl.Message(content=f"**Submit failed:** {exc}").send()
+        return
+
+    await cl.Message(content=_format_decision_result(resp)).send()
+    await refresh_incident_sidebar()
 
 
 @cl.action_callback("approve_all")
@@ -471,13 +519,6 @@ def _format_decision_result(resp: dict) -> str:
         f"- Rejected: {summary.get('rejected_count', 0)}\n"
         f"- Edited: {summary.get('modified_count', 0)}"
     )
-
-
-async def _send_decision_messages(resp: dict) -> None:
-    await cl.Message(content=_format_decision_result(resp)).send()
-    dispatch_block = format_dispatch_simulation(resp.get("dispatch_simulation"))
-    if dispatch_block:
-        await cl.Message(content=dispatch_block, tags=["crisis-dispatch"]).send()
 
 
 async def _get_incident(iid: str):

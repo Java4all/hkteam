@@ -143,6 +143,18 @@ def create_incident_stream(report: IncidentReport):
     )
 
 
+@app.get("/incidents")
+def list_incidents(limit: int = 50, current_id: str | None = None):
+    """Recent incidents for operator history sidebar."""
+    store = get_incident_store()
+    items = store.list_summaries(limit=min(max(limit, 1), 100))
+    return {
+        "incidents": items,
+        "current_incident_id": current_id,
+        "count": len(items),
+    }
+
+
 @app.get("/incidents/{incident_id}")
 def get_incident(incident_id: str):
     row = get_incident_store().get(incident_id)

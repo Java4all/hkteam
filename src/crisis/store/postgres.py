@@ -6,7 +6,6 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
-from crisis.models.enums import IncidentStatus
 from crisis.models.schemas import (
     HumanDecision,
     Incident,
@@ -14,6 +13,7 @@ from crisis.models.schemas import (
     RoutingDecision,
     SpecialistOutput,
 )
+from crisis.store.summaries import row_to_summary
 
 
 class PostgresIncidentStore:
@@ -137,3 +137,15 @@ class PostgresIncidentStore:
                 "SELECT incident_id FROM incidents ORDER BY created_at DESC"
             ).fetchall()
         return [r["incident_id"] for r in rows]
+
+    def list_summaries(self, limit: int = 50) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT payload FROM incidents
+                ORDER BY created_at DESC
+                LIMIT %s
+                """,
+                (limit,),
+            ).fetchall()
+        return [row_to_summary(self._deserialize_row(r["payload"])) for r in rows]

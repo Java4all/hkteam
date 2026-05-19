@@ -247,3 +247,68 @@ html.dark .crisis-help[open] .crisis-help-icon {
   pointer-events: auto !important;
   opacity: 1 !important;
 }
+
+/* Dispatch in-progress */
+.crisis-dispatch-running .crisis-progress-fill {
+  background: linear-gradient(90deg, #0891b2, #22d3ee, #0891b2) !important;
+  background-size: 200% 100% !important;
+  animation: crisis-dispatch-bar 1.2s ease-in-out infinite;
+}
+
+@keyframes crisis-dispatch-bar {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+.crisis-dispatch-summary table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+/* Sidebar: Current / History tabs */
+.crisis-sidebar-tabs {
+  font-size: 0.9rem;
+  max-width: 100%;
+}
+
+.crisis-sidebar-tab-nav {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.crisis-tab {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid rgba(8, 145, 178, 0.45);
+  background: transparent;
+  color: #0891b2;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.crisis-tab.active {
+  background: rgba(8, 145, 178, 0.2);
+  color: #22d3ee;
+}
+
+.crisis-tab-panel[hidden] {
+  display: none !important;
+}
+
+.crisis-history-panel table {
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.dark .crisis-tab,
+html.dark .crisis-tab {
+  color: #22d3ee;
+  border-color: rgba(34, 211, 238, 0.4);
+}

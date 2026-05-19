@@ -1,6 +1,6 @@
 /** Crisis console: favicon, theme CSS, recommendation review styling */
 (function () {
-  var CSS_HREF = "/public/crisis.css?v=crisis5";
+  var CSS_HREF = "/public/crisis.css?v=crisis6";
 
   function ensureStyles() {
     var existing = document.getElementById("crisis-theme-css");
@@ -131,10 +131,38 @@
     syncRecCardActions();
   }
 
+  function initSidebarTabs() {
+    document.querySelectorAll(".crisis-sidebar-tabs").forEach(function (root) {
+      if (root.dataset.crisisTabsBound) return;
+      root.dataset.crisisTabsBound = "1";
+      var buttons = root.querySelectorAll("[data-crisis-tab]");
+      var panels = root.querySelectorAll("[data-crisis-panel]");
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var tab = btn.getAttribute("data-crisis-tab");
+          buttons.forEach(function (b) {
+            b.classList.toggle("active", b === btn);
+          });
+          panels.forEach(function (panel) {
+            var show = panel.getAttribute("data-crisis-panel") === tab;
+            if (show) {
+              panel.removeAttribute("hidden");
+              panel.classList.add("active");
+            } else {
+              panel.setAttribute("hidden", "hidden");
+              panel.classList.remove("active");
+            }
+          });
+        });
+      });
+    });
+  }
+
   function run() {
     ensureStyles();
     applyFavicon();
     styleRecCards();
+    initSidebarTabs();
   }
 
   if (document.readyState === "loading") {
@@ -145,6 +173,7 @@
 
   var obs = new MutationObserver(function () {
     styleRecCards();
+    initSidebarTabs();
   });
   obs.observe(document.body, { childList: true, subtree: true });
 })();

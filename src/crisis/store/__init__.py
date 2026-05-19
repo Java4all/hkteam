@@ -34,5 +34,8 @@ class _StoreProxy:
     def list_ids(self):
         return get_incident_store().list_ids()
 
+    def list_summaries(self, limit: int = 50):
+        return get_incident_store().list_summaries(limit)
+
 
 incident_store = _StoreProxy()
