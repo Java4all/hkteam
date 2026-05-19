@@ -2,6 +2,12 @@
 
 **v1.0** — multi-agent crisis decision-support for city emergency operations.
 
+<p align="center">
+  <img src="docs/assets/product-demo.gif" alt="Chainlit operator console — incident analysis, help panel, and Current / History sidebar" width="920" />
+</p>
+
+<p align="center"><em>Operator console: scenario intake, multi-agent pipeline, recommendation review, dispatch simulation, and incident history.</em></p>
+
 Runs on an **NVIDIA GPU instance** as **Docker Compose**. LLM inference uses **NVIDIA cloud** (`integrate.api.nvidia.com`).
 
 ## Quick start
