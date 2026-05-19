@@ -18,8 +18,6 @@ facility, or operational area).</p>
 <strong>Submit</strong> to run the dispatch simulation and finalize the
 incident package.</p>
 
-<p>Predefined scenario templates are available from the composer for training
-and operational exercises.</p>
 """.strip()
 
 
@@ -27,8 +25,8 @@ def format_welcome_message(*, include_help: bool = True) -> str:
     """Title + subtitle; optional collapsible help (HTML, requires unsafe_allow_html)."""
     lines = [
         '<div class="crisis-welcome">',
-        "## Smart City Crisis Management",
-        '<p class="crisis-welcome-subtitle">',
+        '<p class="crisis-welcome-main">Smart City Crisis Management</p>',
+        '<p class="crisis-welcome-details">',
         "Emergency Operations Center — Incident Analysis Console",
         "</p>",
     ]

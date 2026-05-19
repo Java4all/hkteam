@@ -3,6 +3,8 @@ from crisis.ui.welcome import format_welcome_message
 
 def test_welcome_minimal_title_and_subtitle():
     html = format_welcome_message(include_help=False)
+    assert "crisis-welcome-main" in html
+    assert "crisis-welcome-details" in html
     assert "Smart City Crisis Management" in html
     assert "Emergency Operations Center — Incident Analysis Console" in html
     assert "ingests situation reports" not in html

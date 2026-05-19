@@ -1,6 +1,9 @@
 /** Crisis console: favicon, theme CSS, recommendation review styling */
 (function () {
-  var CSS_HREF = "/public/crisis.css?v=crisis7";
+  var CSS_HREF = "/public/crisis.css?v=crisis9";
+  var APP_TITLE = "Smart City Crisis Management";
+  var APP_SUBTITLE =
+    "Emergency Operations Center \u2014 Incident Analysis Console";
 
   function ensureStyles() {
     var existing = document.getElementById("crisis-theme-css");
@@ -131,6 +134,67 @@
     syncRecCardActions();
   }
 
+  function applyHeaderBranding() {
+    var header = document.querySelector("header");
+    if (!header) {
+      return;
+    }
+    var existingDetails = header.querySelector(".crisis-header-details");
+    if (existingDetails && existingDetails.textContent === APP_SUBTITLE) {
+      return;
+    }
+    var logoLink = header.querySelector('a[href="/"]');
+    if (!logoLink) {
+      return;
+    }
+
+    var titleEl =
+      header.querySelector(".crisis-header-main") ||
+      header.querySelector(".crisis-header-title") ||
+      header.querySelector(".truncate") ||
+      header.querySelector("span.font-medium") ||
+      logoLink.nextElementSibling;
+
+    if (!titleEl || titleEl.tagName === "IMG") {
+      var parent = logoLink.parentElement;
+      if (parent) {
+        titleEl = document.createElement("div");
+        titleEl.className = "flex flex-col";
+        logoLink.insertAdjacentElement("afterend", titleEl);
+      }
+    }
+
+    var brand = header.querySelector(".crisis-header-brand");
+    if (!brand) {
+      brand = document.createElement("div");
+      brand.className = "crisis-header-brand flex flex-col";
+      if (titleEl && titleEl.parentElement) {
+        titleEl.parentElement.insertBefore(brand, titleEl);
+        brand.appendChild(titleEl);
+      } else {
+        logoLink.insertAdjacentElement("afterend", brand);
+      }
+    }
+
+    titleEl = brand.querySelector(".crisis-header-main") || titleEl;
+    if (titleEl) {
+      titleEl.classList.add("crisis-header-main");
+      titleEl.classList.remove("truncate");
+      titleEl.textContent = APP_TITLE;
+      titleEl.style.overflow = "visible";
+      titleEl.style.textOverflow = "clip";
+      titleEl.style.maxWidth = "none";
+    }
+
+    var details = brand.querySelector(".crisis-header-details");
+    if (!details) {
+      details = document.createElement("span");
+      details.className = "crisis-header-details";
+      brand.appendChild(details);
+    }
+    details.textContent = APP_SUBTITLE;
+  }
+
   function hideConversationStarters() {
     document.querySelectorAll('[data-testid="starter"]').forEach(function (btn) {
       var row = btn.closest("div.flex") || btn.parentElement;
@@ -168,6 +232,7 @@
   function run() {
     ensureStyles();
     applyFavicon();
+    applyHeaderBranding();
     hideConversationStarters();
     styleRecCards();
     initSidebarTabs();
@@ -180,6 +245,7 @@
   }
 
   var obs = new MutationObserver(function () {
+    applyHeaderBranding();
     hideConversationStarters();
     styleRecCards();
     initSidebarTabs();
