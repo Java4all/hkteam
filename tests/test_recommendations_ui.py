@@ -71,6 +71,61 @@ def test_parse_aggregator_numbered_recommendations():
     assert any("Monitor river" in b for b in bullets)
 
 
+def test_cyber_briefing_review_panel_matches_three_actions():
+    """Cyber hospital: status lines and duplicate label forms must not appear as cards."""
+    narrative = (
+        "## Incident Overview\n"
+        "Ransomware attack on hospital EMR.\n\n"
+        "## Current Status\n"
+        "Clinical workflows degraded\n"
+        "Some departments on downtime procedures\n"
+        "Possible data exfiltration—unconfirmed\n\n"
+        "## Involved Specialists\n"
+        "Cyber\n\n"
+        "## Recommendations\n"
+        "Activate CIRP: Activate the city's cyber incident response plan to coordinate response efforts.\n"
+        "Do not pay the ransom: Refrain from paying the ransom to avoid encouraging further malicious activity.\n"
+        "Preserve logs: Preserve system logs for forensic analysis to support investigation and potential legal action.\n"
+    )
+    ranked = [
+        {
+            "id": "rec-cyber-1",
+            "priority": 1,
+            "action": "Activate the city's cyber incident response plan (CIRP).",
+            "rationale": "From cyber analysis",
+        },
+        {
+            "id": "rec-cyber-2",
+            "priority": 2,
+            "action": "Do not pay the ransom.",
+            "rationale": "From cyber analysis",
+        },
+        {
+            "id": "rec-cyber-3",
+            "priority": 3,
+            "action": "Preserve logs for forensic analysis.",
+            "rationale": "From cyber analysis",
+        },
+        {
+            "id": "rec-cyber-4",
+            "priority": 4,
+            "action": "Clinical workflows degraded",
+            "rationale": "bad",
+        },
+    ]
+    recs = recommendations_for_review(
+        {"ranked_recommendations": ranked, "narrative": narrative},
+        fallback_agent="cyber",
+    )
+    assert len(recs) == 3
+    actions = " ".join(r["action"].lower() for r in recs)
+    assert "clinical workflows" not in actions
+    assert "exfiltration" not in actions
+    assert "activate" in actions
+    assert "ransom" in actions
+    assert "preserve" in actions or "logs" in actions
+
+
 def test_recommendations_from_narrative_builds_dicts():
     recs = recommendations_from_narrative(
         "## Recommendations\n- Dispatch repair crew\n",

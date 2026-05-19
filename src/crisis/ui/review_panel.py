@@ -7,6 +7,9 @@ import chainlit as cl
 from crisis.agents.display import agent_display_name
 from crisis.agents.recommendations import (
     agent_id_from_recommendation_id,
+    is_status_observation_line,
+    is_valid_recommendation_line,
+    normalize_recommendation_key,
     recommendations_from_narrative,
 )
 
@@ -22,6 +25,8 @@ def _normalize_rec_dict(rec: dict) -> dict | None:
     action = (rec.get("action") or "").strip()
     if not action:
         return None
+    if not is_valid_recommendation_line(action):
+        return None
     rid = rec.get("id") or f"rec-unknown-{hash(action) % 100000}"
     return {
         "id": rid,
@@ -32,18 +37,32 @@ def _normalize_rec_dict(rec: dict) -> dict | None:
     }
 
 
-def _merge_review_recs(primary: list[dict], extra: list[dict], *, max_items: int) -> list[dict]:
+def _is_duplicate_key(key: str, seen: set[str]) -> bool:
+    if key in seen:
+        return True
+    for existing in seen:
+        if len(key) < 18 or len(existing) < 18:
+            continue
+        if key in existing or existing in key:
+            return True
+    return False
+
+
+def unique_recommendations_for_review(recs: list[dict], *, max_items: int = 12) -> list[dict]:
     seen: set[str] = set()
-    merged: list[dict] = []
-    for r in primary + extra:
-        key = (r.get("action") or "").lower().strip()[:120]
-        if not key or key in seen:
+    unique: list[dict] = []
+    for r in recs:
+        action = (r.get("action") or "").strip()
+        if not action or is_status_observation_line(action):
+            continue
+        key = normalize_recommendation_key(action)
+        if not key or _is_duplicate_key(key, seen):
             continue
         seen.add(key)
-        merged.append(r)
-        if len(merged) >= max_items:
+        unique.append(r)
+        if len(unique) >= max_items:
             break
-    return merged
+    return unique
 
 
 def recommendations_for_review(
@@ -57,31 +76,15 @@ def recommendations_for_review(
     normalized = [n for r in raw if (n := _normalize_rec_dict(r))]
     ranked = unique_recommendations_for_review(normalized, max_items=max_items)
 
+    if ranked:
+        for i, rec in enumerate(ranked):
+            rec["priority"] = min(5, i + 1)
+            rec["id"] = f"rec-{fallback_agent or 'eoc'}-{i + 1}"
+        return ranked
+
     narrative = summary.get("narrative") or ""
     agent = fallback_agent or "eoc"
-    from_narrative = recommendations_from_narrative(
-        narrative, agent_id=agent, max_items=max_items
-    )
-
-    if ranked and from_narrative:
-        return _merge_review_recs(ranked, from_narrative, max_items=max_items)
-    if ranked:
-        return ranked
-    return from_narrative
-
-
-def unique_recommendations_for_review(recs: list[dict], *, max_items: int = 12) -> list[dict]:
-    seen: set[str] = set()
-    unique: list[dict] = []
-    for r in recs:
-        key = (r.get("action") or "").lower().strip()[:120]
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        unique.append(r)
-        if len(unique) >= max_items:
-            break
-    return unique or list(recs[:max_items])
+    return recommendations_from_narrative(narrative, agent_id=agent, max_items=max_items)
 
 
 def empty_review_state(recommendations: list[dict]) -> dict[str, Any]:
