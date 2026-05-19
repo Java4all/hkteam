@@ -1,5 +1,40 @@
 /* Smart City Crisis Management — enterprise UI (Chainlit 2.11+) */
 
+/* Header: show full app title (avoid "Smart City Cris…" truncation) */
+header a[href="/"],
+header a[href="/"] span,
+header a[href="/"] img,
+[class*="header"] a[href="/"],
+[class*="header"] .truncate,
+header .truncate,
+[class*="Header"] .truncate {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  max-width: none !important;
+  min-width: 0;
+}
+
+header a[href="/"] img,
+[class*="header"] a[href="/"] img {
+  height: 2rem;
+  width: auto;
+  max-height: 2rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* Hide conversation starter chips (if Chainlit still renders them) */
+[data-testid="starter"],
+button[data-testid^="starter"] {
+  display: none !important;
+}
+
+motion.div:has(> [data-testid="starter"]),
+div:has(> button[data-testid="starter"]) {
+  display: none !important;
+}
+
 :root {
   /* Professional teal spinner (replaces default pink petal icon) */
   --loading-cursor-size: 1.125rem;

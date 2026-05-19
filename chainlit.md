@@ -11,6 +11,4 @@ This workspace ingests situation reports, coordinates specialist analysis, and p
 
 **Command review** — When analysis completes, use **Approve** or **Reject** on each recommendation, then **Submit** for dispatch simulation.
 
-Scenario chips below are training templates.
-
 </details>

@@ -1,6 +1,6 @@
 /** Crisis console: favicon, theme CSS, recommendation review styling */
 (function () {
-  var CSS_HREF = "/public/crisis.css?v=crisis6";
+  var CSS_HREF = "/public/crisis.css?v=crisis7";
 
   function ensureStyles() {
     var existing = document.getElementById("crisis-theme-css");
@@ -131,6 +131,13 @@
     syncRecCardActions();
   }
 
+  function hideConversationStarters() {
+    document.querySelectorAll('[data-testid="starter"]').forEach(function (btn) {
+      var row = btn.closest("div.flex") || btn.parentElement;
+      if (row) row.style.display = "none";
+    });
+  }
+
   function initSidebarTabs() {
     document.querySelectorAll(".crisis-sidebar-tabs").forEach(function (root) {
       if (root.dataset.crisisTabsBound) return;
@@ -161,6 +168,7 @@
   function run() {
     ensureStyles();
     applyFavicon();
+    hideConversationStarters();
     styleRecCards();
     initSidebarTabs();
   }
@@ -172,6 +180,7 @@
   }
 
   var obs = new MutationObserver(function () {
+    hideConversationStarters();
     styleRecCards();
     initSidebarTabs();
   });

@@ -12,7 +12,6 @@ os.environ.setdefault("CHAINLIT_APP_ROOT", str(_PROJECT_ROOT))
 
 import chainlit as cl
 import httpx
-import yaml
 
 from crisis.agents.display import agent_display_name, format_agent_list
 from crisis.ui.pipeline_animator import PipelineProgressUI
@@ -33,21 +32,7 @@ from crisis.ui.review_panel import (
 
 API = os.environ.get("API_BASE_URL", "http://127.0.0.1:8080")
 _PIPELINE_TIMEOUT = float(os.environ.get("CRISIS_PIPELINE_TIMEOUT", "300"))
-_EXAMPLES_YAML = Path(__file__).resolve().parents[3] / "data" / "examples" / "incidents.yaml"
 _SIDEBAR_KEY = "incident-history"
-
-
-def _format_incident_message(description: str, location: str) -> str:
-    desc = description.strip()
-    loc = location.strip()
-    return f"{desc}\n{loc}" if loc else desc
-
-
-def _load_example_incidents() -> list[dict]:
-    if not _EXAMPLES_YAML.is_file():
-        return []
-    data = yaml.safe_load(_EXAMPLES_YAML.read_text(encoding="utf-8")) or {}
-    return list(data.get("examples") or [])
 
 
 def _format_api_error(exc: httpx.HTTPError) -> str:
@@ -129,33 +114,6 @@ async def _run_incident_blocking(
     )
     r.raise_for_status()
     return r.json()
-
-
-@cl.set_starters
-async def set_starters():
-    starters = []
-    for ex in _load_example_incidents():
-        desc = (ex.get("description") or "").strip()
-        loc = (ex.get("location") or "").strip()
-        if not desc:
-            continue
-        starters.append(
-            cl.Starter(
-                label=ex.get("label") or ex.get("id", "Incident"),
-                message=_format_incident_message(desc, loc),
-            )
-        )
-    if starters:
-        return starters
-    return [
-        cl.Starter(
-            label="Water main burst",
-            message=_format_incident_message(
-                "Major water main rupture. Water flooding Oak Street, low pressure in sectors 6–8.",
-                "Oak Street, Sector 7",
-            ),
-        ),
-    ]
 
 
 async def _fetch_incident_summaries() -> list[dict]:
