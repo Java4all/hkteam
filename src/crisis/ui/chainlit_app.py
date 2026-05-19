@@ -246,8 +246,9 @@ async def on_message(message: cl.Message):
     routing = data.get("routing", {})
     summary = data.get("summary", {})
     agents = format_agent_list(routing.get("selected", []))
-    narrative = summary.get("narrative", "")
-    recs = summary.get("ranked_recommendations", [])
+    narrative = strip_recommendations_from_narrative(summary.get("narrative", ""))
+    selected = routing.get("selected") or []
+    fallback_agent = selected[0] if selected else "eoc"
     pipeline_stages = stages or data.get("pipeline_stages", [])
     complete = sum(1 for s in pipeline_stages if s.get("status") == "complete")
     total = len(pipeline_stages)

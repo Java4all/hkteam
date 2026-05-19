@@ -14,7 +14,10 @@ _NARRATIVE_START = re.compile(
 )
 
 
-_RECOMMENDATIONS_HEADING = re.compile(r"^#{1,3}\s*Recommendations\b", re.I | re.M)
+_RECOMMENDATIONS_HEADING = re.compile(
+    r"^#{1,3}\s*Recommendations\b|^Recommendations\s*$",
+    re.I | re.M,
+)
 _NEXT_TOP_SECTION = re.compile(r"\n##\s+\S", re.M)
 
 
@@ -100,7 +103,11 @@ def _collect_recommendation_lines(section: str, *, max_items: int) -> list[str]:
 def parse_recommendation_bullets(text: str, *, max_items: int = 5) -> list[str]:
     """Extract actionable recommendation lines from specialist or EOC markdown."""
     section = extract_recommendations_section(text)
-    return _collect_recommendation_lines(section, max_items=max_items)
+    actions = _collect_recommendation_lines(section, max_items=max_items)
+    if actions:
+        return actions
+    # Aggregator may use numbered list without a ## Recommendations heading
+    return _collect_recommendation_lines(text, max_items=max_items)
 
 
 def recommendations_from_narrative(

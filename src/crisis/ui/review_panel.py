@@ -32,6 +32,20 @@ def _normalize_rec_dict(rec: dict) -> dict | None:
     }
 
 
+def _merge_review_recs(primary: list[dict], extra: list[dict], *, max_items: int) -> list[dict]:
+    seen: set[str] = set()
+    merged: list[dict] = []
+    for r in primary + extra:
+        key = (r.get("action") or "").lower().strip()[:120]
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        merged.append(r)
+        if len(merged) >= max_items:
+            break
+    return merged
+
+
 def recommendations_for_review(
     summary: dict,
     *,
@@ -41,14 +55,19 @@ def recommendations_for_review(
     """Ranked recommendations for the operator review panel, with narrative fallback."""
     raw = summary.get("ranked_recommendations") or []
     normalized = [n for r in raw if (n := _normalize_rec_dict(r))]
-    unique = unique_recommendations_for_review(normalized, max_items=max_items)
-    if unique:
-        return unique
+    ranked = unique_recommendations_for_review(normalized, max_items=max_items)
+
     narrative = summary.get("narrative") or ""
     agent = fallback_agent or "eoc"
-    return recommendations_from_narrative(
+    from_narrative = recommendations_from_narrative(
         narrative, agent_id=agent, max_items=max_items
     )
+
+    if ranked and from_narrative:
+        return _merge_review_recs(ranked, from_narrative, max_items=max_items)
+    if ranked:
+        return ranked
+    return from_narrative
 
 
 def unique_recommendations_for_review(recs: list[dict], *, max_items: int = 12) -> list[dict]:

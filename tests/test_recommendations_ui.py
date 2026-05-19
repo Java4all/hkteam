@@ -3,6 +3,8 @@ from crisis.agents.recommendations import (
     recommendations_from_narrative,
     strip_recommendations_from_narrative,
 )
+
+parse_recommendation_bullets  # used in test_parse_aggregator_numbered_recommendations
 from crisis.ui.review_panel import recommendations_for_review
 
 
@@ -52,6 +54,21 @@ def test_recommendations_for_review_falls_back_to_narrative():
     assert len(recs) == 2
     assert recs[0]["id"].startswith("rec-cyber-")
     assert "containment" in recs[0]["action"].lower()
+
+
+def test_parse_aggregator_numbered_recommendations():
+    text = (
+        "## Involved Specialists\n- Utilities\n\n"
+        "## Recommendations\n"
+        "1. **Monitoring and Preparation:** Monitor river gauges and pre-stage pumps.\n"
+        "2. **Traffic Coordination:** Coordinate with traffic for excavation.\n"
+        "3. **Communication:** Use approved templates for alerts.\n\n"
+        "## Next Steps\n"
+        "Report to the EOC.\n"
+    )
+    bullets = parse_recommendation_bullets(text, max_items=10)
+    assert len(bullets) >= 3
+    assert any("Monitor river" in b for b in bullets)
 
 
 def test_recommendations_from_narrative_builds_dicts():
