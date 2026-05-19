@@ -156,31 +156,6 @@ async def set_starters():
     ]
 
 
-@cl.on_chat_start
-async def start():
-    await cl.Message(
-        content=(
-            "## Smart City Crisis Management\n"
-            '<p class="crisis-welcome-subtitle">'
-            "Emergency Operations Center — Incident Analysis Console"
-            "</p>\n\n"
-            "This workspace ingests situation reports, coordinates cross-domain "
-            "specialist analysis, and produces a consolidated briefing for command staff. "
-            "Decisions you record here are retained for audit and after-action review.\n\n"
-            '<p class="crisis-welcome-section">Submit an incident</p>\n'
-            "Enter a situation report in the message field below. Place the "
-            "**affected location** on the final line (address, intersection, facility, "
-            "or operational area).\n\n"
-            '<p class="crisis-welcome-section">Command review</p>\n'
-            "When analysis completes, validate each recommendation with "
-            "**Approve** or **Reject** on each item, then select **Submit** to finalize "
-            "the incident package.\n\n"
-            "Predefined scenario templates are available from the composer for "
-            "training and operational exercises."
-        )
-    ).send()
-
-
 @cl.on_message
 async def on_message(message: cl.Message):
     text = message.content.strip()

@@ -2,8 +2,15 @@
 
 **Emergency Operations Center — Incident Analysis Console**
 
-Submit a situation report using the message composer. Put the **affected location on the last line** of your message.
+<details class="crisis-help">
+<summary class="crisis-help-trigger"><span class="crisis-help-icon">?</span> Help</summary>
 
-When analysis completes, review recommendations in the **Crisis Response Command Center**, then use **Approve** or **Reject** on each card and **Submit** to finalize (dispatch simulation).
+This workspace ingests situation reports, coordinates specialist analysis, and produces a consolidated briefing for command staff.
 
-Documentation: [docs/README.md](docs/README.md) · Agent workflows: [docs/AGENTS.md](docs/AGENTS.md)
+**Submit an incident** — Enter a situation report below. Put the **affected location on the last line**.
+
+**Command review** — When analysis completes, use **Approve** or **Reject** on each recommendation, then **Submit** for dispatch simulation.
+
+Scenario chips below are training templates.
+
+</details>

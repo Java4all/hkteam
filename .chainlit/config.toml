@@ -118,7 +118,7 @@ name = "Smart City Crisis Management"
 confirm_new_chat = true
 
 # Description of the assistant. This is used for HTML tags.
-description = "Emergency Operations Center incident analysis and multi-agency command review."
+description = "Emergency Operations Center — Incident Analysis Console"
 
 # Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
 cot = "full"

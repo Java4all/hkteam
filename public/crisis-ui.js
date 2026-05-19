@@ -1,6 +1,6 @@
 /** Crisis console: favicon, theme CSS, recommendation review styling */
 (function () {
-  var CSS_HREF = "/public/crisis.css?v=crisis4";
+  var CSS_HREF = "/public/crisis.css?v=crisis5";
 
   function ensureStyles() {
     var existing = document.getElementById("crisis-theme-css");
