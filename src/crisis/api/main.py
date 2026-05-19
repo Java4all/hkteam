@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from crisis.dispatch.simulator import simulate_dispatch
 from crisis.pipeline.serialize import incident_response
 from crisis.pipeline.runner import run_incident_pipeline, stream_incident_pipeline
-from crisis.models.schemas import HumanDecision, IncidentReport
+from crisis.models.schemas import HumanDecision, IncidentReport, Recommendation
 from crisis.llm.nvidia_health import nvidia_health
 from crisis.observability.langfuse import langfuse_health
 from crisis.settings import settings
@@ -32,6 +32,50 @@ class HumanDecisionRequest(BaseModel):
     rejected_recommendation_ids: list[str] = Field(default_factory=list)
     rejection_reason: str | None = None
     modified_recommendations: dict[str, str] = Field(default_factory=dict)
+    # Snapshot from Chainlit review panel (covers narrative-fallback rec IDs).
+    review_recommendations: list[dict] = Field(default_factory=list)
+
+
+def _known_recommendation_ids(
+    summary,
+    review_recommendations: list[dict] | None,
+) -> set[str]:
+    known: set[str] = set()
+    if summary:
+        known.update(r.id for r in summary.ranked_recommendations)
+    for raw in review_recommendations or []:
+        rid = raw.get("id")
+        if rid:
+            known.add(str(rid))
+    return known
+
+
+def _recommendations_for_dispatch(
+    summary,
+    review_recommendations: list[dict] | None,
+) -> list[Recommendation]:
+    recs: list[Recommendation] = []
+    seen: set[str] = set()
+    if summary:
+        for r in summary.ranked_recommendations:
+            recs.append(r)
+            seen.add(r.id)
+    for raw in review_recommendations or []:
+        rid = str(raw.get("id") or "")
+        action = (raw.get("action") or "").strip()
+        if not rid or rid in seen or not action:
+            continue
+        recs.append(
+            Recommendation(
+                id=rid,
+                priority=int(raw.get("priority") or 1),
+                action=action,
+                rationale=str(raw.get("rationale") or ""),
+                evidence_ids=list(raw.get("evidence_ids") or []),
+            )
+        )
+        seen.add(rid)
+    return recs
 
 
 @app.get("/health/live")
@@ -126,15 +170,13 @@ def post_decision(incident_id: str, body: HumanDecisionRequest):
     if not row:
         raise HTTPException(404, detail="Incident not found")
     summary = row.get("incident_summary")
-    known = (
-        {r.id for r in summary.ranked_recommendations} if summary else set()
-    )
+    known = _known_recommendation_ids(summary, body.review_recommendations)
     unknown = (
         set(body.approved_recommendation_ids)
         | {x for x in body.rejected_recommendation_ids if x != "*"}
         | set(body.modified_recommendations)
     ) - known
-    if unknown and known:
+    if unknown:
         raise HTTPException(
             400,
             detail={"unknown_recommendation_ids": sorted(unknown)},
@@ -152,7 +194,7 @@ def post_decision(incident_id: str, body: HumanDecisionRequest):
     row = get_incident_store().get(incident_id)
     inc = row["incident"]
     summary = row.get("incident_summary")
-    recs = summary.ranked_recommendations if summary else []
+    recs = _recommendations_for_dispatch(summary, body.review_recommendations)
     dispatch_sim = simulate_dispatch(
         incident_id=incident_id,
         approved_ids=decision.approved_recommendation_ids,

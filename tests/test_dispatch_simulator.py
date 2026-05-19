@@ -3,8 +3,10 @@ import os
 os.environ["CRISIS_USE_MOCK_LLM"] = "true"
 os.environ["DATABASE_URL"] = ""
 
+from crisis.api.main import _recommendations_for_dispatch
 from crisis.dispatch.simulator import simulate_dispatch
-from crisis.models.schemas import Recommendation
+from crisis.models.enums import Category, SeverityLevel
+from crisis.models.schemas import IncidentSummary, Recommendation
 from crisis.ui.dispatch_display import format_dispatch_simulation
 
 
@@ -46,6 +48,37 @@ def test_simulate_dispatch_empty_when_none_approved():
     )
     assert out["dispatched_count"] == 0
     assert out["entries"] == []
+
+
+def test_recommendations_for_dispatch_merges_review_snapshot():
+    summary = IncidentSummary(
+        incident_id="INC-TEST",
+        categories=[Category.UTILITIES],
+        severity=SeverityLevel.HIGH,
+        agent_outputs={},
+        ranked_recommendations=[],
+        communication_drafts=[],
+        narrative="## Recommendations\n- Shut valve\n",
+    )
+    review = [
+        {
+            "id": "rec-utilities-1",
+            "priority": 1,
+            "action": "Shut valve on Oak Street main.",
+            "rationale": "",
+        }
+    ]
+    merged = _recommendations_for_dispatch(summary, review)
+    assert len(merged) == 1
+    assert merged[0].id == "rec-utilities-1"
+    out = simulate_dispatch(
+        incident_id="INC-TEST",
+        approved_ids=["rec-utilities-1"],
+        recommendations=merged,
+        simulation_mode=True,
+    )
+    assert out["dispatched_count"] == 1
+    assert "Shut valve" in out["entries"][0]["action"]
 
 
 def test_format_dispatch_simulation_renders_entries():

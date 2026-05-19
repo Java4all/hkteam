@@ -305,7 +305,15 @@ async def _send_review_panel(iid: str, recs: list[dict]) -> None:
         card_msgs[rid] = card
     cl.user_session.set(review_cards_key(iid), card_msgs)
 
-    footer = cl.Message(content="", actions=build_footer_actions(iid))
+    footer = cl.Message(
+        content=(
+            "### Finalize review\n\n"
+            "Mark each recommendation, then **Submit** to record your decision "
+            "and run the **dispatch simulation**."
+        ),
+        actions=build_footer_actions(iid),
+        tags=["crisis-review-footer"],
+    )
     await footer.send()
     cl.user_session.set(f"review_footer_{iid}", footer)
 
@@ -373,9 +381,20 @@ async def reject_rec(action: cl.Action):
 @cl.action_callback("submit_review")
 async def submit_review(action: cl.Action):
     iid = action.payload.get("id") or cl.user_session.get("incident_id")
+    if not iid:
+        await cl.Message(
+            content="**No active incident.** Submit a new situation report to begin."
+        ).send()
+        return
     state = _get_review_state(iid)
     if not state:
-        await cl.Message(content="Session expired.").send()
+        await cl.Message(
+            content=(
+                "**Review session expired** (page was refreshed or the tab was idle). "
+                "Submit the incident again, or use **Approve all** then **Submit** "
+                "before refreshing."
+            )
+        ).send()
         return
     recs = state["recommendations"]
     pending = [
@@ -391,13 +410,41 @@ async def submit_review(action: cl.Action):
             )
         ).send()
         return
-    resp = await _post_decision(
-        iid,
-        list(state["approved"]),
-        list(state["rejected"]),
-        None,
-        dict(state["modified"]),
-    )
+
+    async with cl.Step(
+        name="Dispatch simulation",
+        type="run",
+        show_input=False,
+        default_open=True,
+    ) as step:
+        step.output = "Recording operator decision…"
+        try:
+            resp = await _post_decision(
+                iid,
+                list(state["approved"]),
+                list(state["rejected"]),
+                None,
+                dict(state["modified"]),
+                recs,
+            )
+        except httpx.HTTPStatusError as exc:
+            step.output = "Failed"
+            await cl.Message(content=_format_api_error(exc)).send()
+            return
+        except httpx.HTTPError as exc:
+            step.output = "Failed"
+            await cl.Message(
+                content=f"**Could not reach API** at `{API}` — {exc}"
+            ).send()
+            return
+        except Exception as exc:
+            step.output = "Failed"
+            await cl.Message(content=f"**Submit failed:** {exc}").send()
+            return
+        step.output = (
+            f"Simulation complete — {resp.get('dispatch_simulation', {}).get('dispatched_count', 0)} "
+            "dispatch entr(y/ies)"
+        )
     await _send_decision_messages(resp)
 
 
@@ -473,6 +520,7 @@ async def _post_decision(
     rejected: list[str],
     reason: str | None,
     modified: dict[str, str] | None = None,
+    review_recommendations: list[dict] | None = None,
 ) -> dict:
     async with httpx.AsyncClient(timeout=60.0) as client:
         r = await client.post(
@@ -483,6 +531,7 @@ async def _post_decision(
                 "rejected_recommendation_ids": rejected,
                 "rejection_reason": reason,
                 "modified_recommendations": modified or {},
+                "review_recommendations": review_recommendations or [],
             },
         )
         r.raise_for_status()

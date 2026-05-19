@@ -1,5 +1,19 @@
-/** Crisis console: favicon + recommendation review styling */
+/** Crisis console: favicon, theme CSS, recommendation review styling */
 (function () {
+  var CSS_HREF = "/public/crisis.css?v=crisis4";
+
+  function ensureStyles() {
+    var existing = document.getElementById("crisis-theme-css");
+    if (existing) {
+      return;
+    }
+    var link = document.createElement("link");
+    link.id = "crisis-theme-css";
+    link.rel = "stylesheet";
+    link.href = CSS_HREF;
+    document.head.appendChild(link);
+  }
+
   function applyFavicon() {
     var href = "/favicon?v=crisis2";
     document.querySelectorAll('link[rel*="icon"]').forEach(function (el) {
@@ -73,6 +87,8 @@
   }
 
   function styleRecCards() {
+    ensureStyles();
+
     document.querySelectorAll(".crisis-rec-card, .crisis-dispatch-wrap").forEach(function (card) {
       var step =
         card.closest('[class*="step"]') ||
@@ -90,24 +106,33 @@
       });
     });
 
-    document.querySelectorAll("button").forEach(function (btn) {
-      var label = (btn.textContent || "").trim();
-      if (ACTION_COLORS[label]) {
-        btn.style.color = ACTION_COLORS[label];
-        btn.style.fontWeight = "600";
-        btn.style.background = "transparent";
-        btn.style.border = "none";
-        btn.style.boxShadow = "none";
-        btn.style.paddingLeft = "0";
-        btn.style.paddingRight = "0.75rem";
-        btn.style.pointerEvents = "auto";
-        btn.style.cursor = "pointer";
-      }
+    document.querySelectorAll(".crisis-rec-card").forEach(function (card) {
+      var root =
+        card.closest('[class*="step"]') ||
+        card.closest('[class*="message"]') ||
+        card.parentElement;
+      if (!root) return;
+      root.querySelectorAll("button").forEach(function (btn) {
+        var label = (btn.textContent || "").trim();
+        if (ACTION_COLORS[label]) {
+          btn.style.color = ACTION_COLORS[label];
+          btn.style.fontWeight = "600";
+          btn.style.background = "transparent";
+          btn.style.border = "none";
+          btn.style.boxShadow = "none";
+          btn.style.paddingLeft = "0";
+          btn.style.paddingRight = "0.75rem";
+          btn.style.pointerEvents = "auto";
+          btn.style.cursor = "pointer";
+        }
+      });
     });
+
     syncRecCardActions();
   }
 
   function run() {
+    ensureStyles();
     applyFavicon();
     styleRecCards();
   }

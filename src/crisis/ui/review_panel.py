@@ -110,9 +110,9 @@ def format_rec_card(index: int, rec: dict, state: dict[str, Any]) -> str:
     action = action.strip().replace("\n", " ")
 
     return (
-        '<div class="crisis-rec-card">'
-        f'<div class="crisis-rec-title">{index + 1}. {specialist}</div>'
-        f'<p class="crisis-rec-body">{action}</p>'
+        '<div class="crisis-rec-card" style="margin:0.35rem 0;padding:0.5rem 0;">'
+        f'<div class="crisis-rec-title" style="font-weight:600;margin-bottom:0.35rem;">{index + 1}. {specialist}</div>'
+        f'<p class="crisis-rec-body" style="margin:0;line-height:1.45;">{action}</p>'
         "</div>"
     )
 
